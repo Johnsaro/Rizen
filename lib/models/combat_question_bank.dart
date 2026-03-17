@@ -1,0 +1,225 @@
+import 'combat_question.dart';
+
+class CombatQuestionBank {
+  static List<CombatQuestion> get all => [
+        // ── Sec Analyst ────────────────────────────────────────
+        // Weapon tags match shop arsenal: Recon Blade, Enum Staff,
+        // Exploit Dagger, Stealth Cloak.
+        CombatQuestion(
+          id: 'q_sec_001',
+          questionText: 'What does nmap -sV do?',
+          options: [
+            'Scans UDP ports only',
+            'Detects service versions on open ports',
+            'Evades IDS/IPS detection',
+            'Lists all connected network interfaces',
+          ],
+          correctIndex: 1,
+          weaponTag: 'Recon Blade',
+          classTag: 'Sec Analyst',
+          baseDamage: 120,
+        ),
+        CombatQuestion(
+          id: 'q_sec_002',
+          questionText: 'What type of traffic does Burp Suite intercept by default?',
+          options: [
+            'DNS queries',
+            'SMTP email traffic',
+            'HTTP and HTTPS browser traffic',
+            'FTP file transfers',
+          ],
+          correctIndex: 2,
+          weaponTag: 'Exploit Dagger',
+          classTag: 'Sec Analyst',
+          baseDamage: 110,
+        ),
+        CombatQuestion(
+          id: 'q_sec_003',
+          questionText: 'What is SQL injection?',
+          options: [
+            'Inserting malicious files into a database server',
+            'Injecting SQL commands into input fields to manipulate a database',
+            'Overflowing a database buffer with large queries',
+            'Stealing database backups via FTP',
+          ],
+          correctIndex: 1,
+          weaponTag: 'Exploit Dagger',
+          classTag: 'Sec Analyst',
+          baseDamage: 130,
+        ),
+        CombatQuestion(
+          id: 'q_sec_004',
+          questionText: 'What is Cross-Site Scripting (XSS)?',
+          options: [
+            'Hijacking a session via network sniffing',
+            'Injecting malicious scripts that execute in another user\'s browser',
+            'Forging HTTP requests from a trusted user',
+            'Brute-forcing login credentials across multiple sites',
+          ],
+          correctIndex: 1,
+          weaponTag: 'Exploit Dagger',
+          classTag: 'Sec Analyst',
+          baseDamage: 125,
+        ),
+        CombatQuestion(
+          id: 'q_sec_005',
+          questionText: 'What does gobuster primarily enumerate?',
+          options: [
+            'Open ports on a target host',
+            'DNS records for a domain',
+            'Directories and files on a web server',
+            'Running processes on a Linux system',
+          ],
+          correctIndex: 2,
+          weaponTag: 'Enum Staff',
+          classTag: 'Sec Analyst',
+          baseDamage: 115,
+        ),
+        CombatQuestion(
+          id: 'q_sec_006',
+          questionText: 'What is a reverse shell?',
+          options: [
+            'A shell that encrypts all outgoing traffic',
+            'A shell running inside a sandboxed VM',
+            'A connection initiated from the target back to the attacker\'s machine',
+            'A read-only shell used for forensic auditing',
+          ],
+          correctIndex: 2,
+          weaponTag: 'Stealth Cloak',
+          classTag: 'Sec Analyst',
+          baseDamage: 135,
+        ),
+        CombatQuestion(
+          id: 'q_sec_007',
+          questionText: 'What does CVE stand for in cybersecurity?',
+          options: [
+            'Common Vulnerability Exposure',
+            'Critical Vulnerability Event',
+            'Common Vulnerabilities and Exposures',
+            'Classified Vulnerability Entry',
+          ],
+          correctIndex: 2,
+          weaponTag: 'Recon Blade',
+          classTag: 'Sec Analyst',
+          baseDamage: 120,
+        ),
+
+        // ── Mobile Developer ────────────────────────────────────
+        // Weapon tags match shop arsenal: Code Forge, Debug Shield.
+        CombatQuestion(
+          id: 'q_mob_001',
+          questionText:
+              'What is the key difference of StatefulWidget over StatelessWidget?',
+          options: [
+            'It renders faster on older devices',
+            'It can hold and manage mutable state that triggers rebuilds',
+            'It does not require a BuildContext',
+            'It automatically handles network requests',
+          ],
+          correctIndex: 1,
+          weaponTag: 'Code Forge',
+          classTag: 'Mobile Developer',
+          baseDamage: 110,
+        ),
+        CombatQuestion(
+          id: 'q_mob_002',
+          questionText: 'What does a Future<T> in Dart represent?',
+          options: [
+            'A list that grows asynchronously',
+            'A scheduled UI rebuild event',
+            'A value that will be available at some point in the future',
+            'A widget that loads its children lazily',
+          ],
+          correctIndex: 2,
+          weaponTag: 'Code Forge',
+          classTag: 'Mobile Developer',
+          baseDamage: 105,
+        ),
+        CombatQuestion(
+          id: 'q_mob_003',
+          questionText: 'What does hot reload do in Flutter development?',
+          options: [
+            'Fully restarts the app and resets all state',
+            'Clears the build cache and recompiles from scratch',
+            'Injects updated code into the running app without losing state',
+            'Deploys the app directly to the Play Store',
+          ],
+          correctIndex: 2,
+          weaponTag: 'Code Forge',
+          classTag: 'Mobile Developer',
+          baseDamage: 100,
+        ),
+        CombatQuestion(
+          id: 'q_mob_004',
+          questionText: 'What does setState() do in a Flutter StatefulWidget?',
+          options: [
+            'Saves widget data to SharedPreferences',
+            'Sends the widget state to a backend server',
+            'Marks the widget dirty and triggers its build method',
+            'Resets all child widgets to their initial state',
+          ],
+          correctIndex: 2,
+          weaponTag: 'Debug Shield',
+          classTag: 'Mobile Developer',
+          baseDamage: 110,
+        ),
+
+        // ── Web Developer / General ─────────────────────────────
+        CombatQuestion(
+          id: 'q_web_001',
+          questionText: 'What does an HTTP GET request do?',
+          options: [
+            'Sends data to a server to create a new resource',
+            'Requests data from a server without modifying it',
+            'Deletes a resource on the server',
+            'Updates an existing resource with new data',
+          ],
+          correctIndex: 1,
+          weaponTag: 'Debug Shield',
+          classTag: 'Web Developer',
+          baseDamage: 100,
+        ),
+        CombatQuestion(
+          id: 'q_web_002',
+          questionText: 'What does REST stand for?',
+          options: [
+            'Remote Execution of Server Transactions',
+            'Representational State Transfer',
+            'Recursive Endpoint State Transmission',
+            'Reliable Event-Sourced Transactioning',
+          ],
+          correctIndex: 1,
+          weaponTag: 'Debug Shield',
+          classTag: 'Web Developer',
+          baseDamage: 105,
+        ),
+        CombatQuestion(
+          id: 'q_web_003',
+          questionText: 'What does a HTTP 404 status code mean?',
+          options: [
+            'The server encountered an internal error',
+            'The request was redirected to another URL',
+            'Access to the resource is forbidden',
+            'The requested resource was not found on the server',
+          ],
+          correctIndex: 3,
+          weaponTag: 'Code Forge',
+          classTag: 'Web Developer',
+          baseDamage: 95,
+        ),
+        CombatQuestion(
+          id: 'q_gen_001',
+          questionText: 'What does git commit do?',
+          options: [
+            'Pushes local changes to a remote repository',
+            'Saves staged changes to the local repository history',
+            'Merges two branches together',
+            'Creates a new branch from the current state',
+          ],
+          correctIndex: 1,
+          weaponTag: 'Code Forge',
+          classTag: 'Web Developer',
+          baseDamage: 100,
+        ),
+      ];
+}

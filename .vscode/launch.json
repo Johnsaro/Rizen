@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Rizen (debug)",
+      "request": "launch",
+      "type": "dart",
+      "toolArgs": [
+        "--dart-define",
+        "SUPABASE_URL=https://crxclzjjqinsjsvyksyg.supabase.co",
+        "--dart-define",
+        "SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyeGNsempqcWluc2pzdnlrc3lnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NzY3MzksImV4cCI6MjA4NzE1MjczOX0.-LYirtHGIvvkb4fkjBOVNNucQlwF9Q3Y_5qcTEq4yA8",
+        "--dart-define",
+        "OPENAI_API_KEY=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"
+      ]
+    },
+    {
+      "name": "Rizen (release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "toolArgs": [
+        "--dart-define",
+        "SUPABASE_URL=https://crxclzjjqinsjsvyksyg.supabase.co",
+        "--dart-define",
+        "SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyeGNsempqcWluc2pzdnlrc3lnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NzY3MzksImV4cCI6MjA4NzE1MjczOX0.-LYirtHGIvvkb4fkjBOVNNucQlwF9Q3Y_5qcTEq4yA8",
+        "--dart-define",
+        "OPENAI_API_KEY=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"
+      ]
+    }
+  ]
+}
