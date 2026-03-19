@@ -6,6 +6,7 @@ import '../app_state.dart';
 import '../models/quest.dart';
 import '../theme/rank_colors.dart' as rc;
 import 'guild_master_screen.dart';
+import 'library/library_screen.dart';
 import 'personal_records_screen.dart';
 import '../widgets/check_in_overlay.dart';
 import '../theme/night_guild_background.dart';
@@ -289,8 +290,8 @@ class _GuildScreenState extends State<GuildScreen> {
               final String label;
               if (checkedIn) {
                 label = 'Morning ritual: Complete';
-              } else if (player.streak > 0) {
-                label = 'Dao Heart: ${player.streak} days';
+              } else if (player.daoHeartStreak > 0) {
+                label = 'Dao Heart: ${player.daoHeartStreak} days';
               } else {
                 label = 'Last ritual: Ancient history';
               }
@@ -405,6 +406,48 @@ class _GuildScreenState extends State<GuildScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 10),
+          // Sect Library button — Shadow Arts only
+          if (playerNotifier.value.sect == 'Shadow Arts')
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const LibraryScreen(),
+                ),
+              ),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: cs.outline.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.menu_book, color: cs.onSurface.withValues(alpha: 0.7), size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Sect Library',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: cs.onSurface.withValues(alpha: 0.7),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios, color: cs.onSurface.withValues(alpha: 0.3), size: 12),
+                  ],
+                ),
+              ),
+            ),
           const SizedBox(height: 24),
           Text(
             'TRIAL BOARD',

@@ -351,6 +351,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+  double _getDurability(PlayerData player, String weaponName) {
+    final raw = player.weaponDurability[weaponName] ?? 100;
+    return (raw / 100.0).clamp(0.0, 1.0);
+  }
+
   Widget _buildEquippedTab(PlayerData player, ColorScheme cs) {
     final meta = _lookupWeapon(player.equippedWeapon);
     if (player.equippedWeapon.isEmpty || meta == null) {
@@ -362,6 +367,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ],
       );
     }
+    final dur = _getDurability(player, player.equippedWeapon);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -372,8 +378,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
           name: player.equippedWeapon,
           itemClass: meta.itemClass,
           rank: meta.rank,
-          durability: 1.0,
+          durability: dur,
           perk: meta.perk,
+          warning: dur < 0.7 ? Text(
+            dur == 0 ? 'DEGRADED — Refine to restore' : 'Refinement low — consider Refine mode',
+            style: TextStyle(color: dur == 0 ? Colors.red : Colors.orange, fontSize: 11),
+          ) : null,
           buttons: [
             _buildActionButton(
               cs: cs,
@@ -382,6 +392,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
               onTap: _equipping ? null : _handleUnequip,
             ),
             const SizedBox(width: 8),
+            if (dur < 0.7) ...[
+              _buildActionButton(
+                cs: cs,
+                label: 'REFINE',
+                onTap: () => _openRepair(player.equippedWeapon),
+              ),
+              const SizedBox(width: 8),
+            ],
             _buildActionButton(
               cs: cs,
               label: 'MEDITATE',
@@ -415,13 +433,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ...benched.map((name) {
           final meta = _lookupWeapon(name);
           if (meta == null) return const SizedBox.shrink();
+          final dur = _getDurability(player, name);
           return _buildItemCard(
             cs: cs,
             icon: meta.icon,
             name: name,
             itemClass: meta.itemClass,
             rank: meta.rank,
-            durability: 1.0,
+            durability: dur,
             perk: meta.perk,
             buttons: [
               _buildActionButton(
@@ -449,12 +468,48 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  Widget _buildDegradedTab(ColorScheme cs) {
+  Widget _buildDegradedTab(PlayerData player, ColorScheme cs) {
+    final degraded = _ownedWeapons(player)
+        .where((name) => (player.weaponDurability[name] ?? 100) == 0)
+        .toList();
+
+    if (degraded.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('DEGRADED', cs),
+          _buildEmptyState('No degraded artifacts.\nKeep training to maintain your arsenal.', cs),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('DEGRADED', cs),
-        _buildEmptyState('Refinement tracking coming in a future update.\nUse Refine mode to maintain your artifacts.', cs),
+        _buildSectionHeader('DEGRADED  ${degraded.length}', cs),
+        ...degraded.map((name) {
+          final meta = _lookupWeapon(name);
+          if (meta == null) return const SizedBox.shrink();
+          return _buildItemCard(
+            cs: cs,
+            icon: meta.icon,
+            name: name,
+            itemClass: meta.itemClass,
+            rank: meta.rank,
+            durability: 0.0,
+            warning: Text(
+              'DEGRADED — Complete Refine mode to restore',
+              style: TextStyle(color: Colors.red, fontSize: 11),
+            ),
+            buttons: [
+              _buildActionButton(
+                cs: cs,
+                label: 'REFINE',
+                onTap: () => _openRepair(name),
+              ),
+            ],
+          );
+        }),
       ],
     );
   }
@@ -594,7 +649,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             tabContent = _buildBenchedTab(player, cs);
             break;
           case 2:
-            tabContent = _buildDegradedTab(cs);
+            tabContent = _buildDegradedTab(player, cs);
             break;
           case 3:
             tabContent = _buildCosmeticsTab(player, cs);
@@ -643,7 +698,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               Icon(Icons.stars, color: cs.secondary, size: 14),
                               const SizedBox(width: 5),
                               Text(
-                                '${player.rep} Stones',
+                                '${player.spiritStones} Stones',
                                 style: GoogleFonts.jetBrainsMono(
                                   color: cs.secondary,
                                   fontSize: 12,
@@ -677,14 +732,5 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  // Path name display mapping
-  String _displayPathName(String className) {
-    const map = {
-      'Sec Analyst': 'Shadow Arts',
-      'Game Developer': 'Realm Architect',
-      'Web Developer': 'Formation Master',
-      'Mobile Developer': 'Artifact Refiner',
-    };
-    return map[className] ?? className;
-  }
+  String _displayPathName(String className) => className;
 }

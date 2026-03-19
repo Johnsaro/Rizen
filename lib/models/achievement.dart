@@ -6,7 +6,7 @@ class Achievement {
   final String description;
   final String category;
   final IconData icon;
-  final int repReward;
+  final int spiritStoneReward;
   final String? titleReward;
   final bool comingSoon;
 
@@ -16,7 +16,7 @@ class Achievement {
     required this.description,
     required this.category,
     required this.icon,
-    this.repReward = 0,
+    this.spiritStoneReward = 0,
     this.titleReward,
     this.comingSoon = false,
   });
@@ -45,7 +45,7 @@ class AchievementCatalog {
       description: 'Reach a 7-day streak',
       category: _consistency,
       icon: Icons.local_fire_department,
-      repReward: 200,
+      spiritStoneReward: 200,
       titleReward: 'The Consistent',
     ),
     Achievement(
@@ -54,7 +54,7 @@ class AchievementCatalog {
       description: 'Reach a 30-day streak',
       category: _consistency,
       icon: Icons.local_fire_department,
-      repReward: 500,
+      spiritStoneReward: 500,
       titleReward: 'Unwavering',
     ),
     Achievement(
@@ -63,7 +63,7 @@ class AchievementCatalog {
       description: 'Reach a 100-day streak',
       category: _consistency,
       icon: Icons.local_fire_department,
-      repReward: 2000,
+      spiritStoneReward: 2000,
       titleReward: 'The Relentless',
     ),
     Achievement(
@@ -89,7 +89,7 @@ class AchievementCatalog {
       description: 'Defeat 10 monsters',
       category: _combat,
       icon: Icons.whatshot,
-      repReward: 300,
+      spiritStoneReward: 300,
     ),
     Achievement(
       id: 'boss_killer',
@@ -115,7 +115,7 @@ class AchievementCatalog {
       description: 'Win a battle without taking damage',
       category: _combat,
       icon: Icons.stars,
-      repReward: 500,
+      spiritStoneReward: 500,
       comingSoon: true,
     ),
 
@@ -133,7 +133,7 @@ class AchievementCatalog {
       description: 'Complete 50 quests',
       category: _quest,
       icon: Icons.repeat,
-      repReward: 300,
+      spiritStoneReward: 300,
     ),
     Achievement(
       id: 'sss_cleared',
@@ -159,7 +159,7 @@ class AchievementCatalog {
       description: 'Own 3 knowledge items',
       category: _knowledge,
       icon: Icons.local_library,
-      repReward: 200,
+      spiritStoneReward: 200,
     ),
     Achievement(
       id: 'living_encyclopedia',
@@ -177,7 +177,7 @@ class AchievementCatalog {
       description: 'Reach Level 10',
       category: _consistency,
       icon: Icons.arrow_upward,
-      repReward: 100,
+      spiritStoneReward: 100,
     ),
     Achievement(
       id: 'level_25',
@@ -185,7 +185,7 @@ class AchievementCatalog {
       description: 'Reach Level 25',
       category: _consistency,
       icon: Icons.arrow_upward,
-      repReward: 500,
+      spiritStoneReward: 500,
       titleReward: 'Veteran',
     ),
   ];

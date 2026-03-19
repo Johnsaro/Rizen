@@ -5,6 +5,10 @@ import '../models/player_data.dart';
 import '../models/quest.dart';
 import '../models/game_notification.dart';
 import '../models/personal_record.dart';
+import '../models/sect_path.dart';
+import '../models/player_path.dart';
+import '../models/lesson.dart';
+import '../models/weapon.dart';
 
 // Record type returned by loadProfile — carries both the player data and the
 // checked-in date stored in the profile row.
@@ -18,9 +22,6 @@ class SupabaseService {
 
   // ── App Config ────────────────────────────────────────
 
-  /// Loads remote app config (maintenance mode, version gates).
-  /// Returns [AppConfig.fallback] on any error so the app never blocks
-  /// users just because the config table is unreachable.
   static Future<AppConfig> loadAppConfig() async {
     try {
       final row = await _client
@@ -39,8 +40,6 @@ class SupabaseService {
 
   // ── Profile ────────────────────────────────────────────
 
-  /// Loads the player profile for [userId].
-  /// Returns null if no completed-onboarding profile exists yet.
   static Future<ProfileResult?> loadProfile(String userId) async {
     final row = await _client
         .from('profiles')
@@ -50,30 +49,50 @@ class SupabaseService {
         .maybeSingle()
         .timeout(_timeout);
 
-    if (row == null) return null;
+    if (row == null) {
+      final anyRow = await _client
+          .from('profiles')
+          .select('user_id, name, main_path, onboarding_complete')
+          .eq('user_id', userId)
+          .maybeSingle()
+          .timeout(_timeout);
+      debugPrint('[SupabaseService] loadProfile($userId): onboarded row=null | raw row=${anyRow != null ? "exists(onboarding=${anyRow['onboarding_complete']}, path=${anyRow['main_path']})" : "NO ROW AT ALL"}');
+      return null;
+    }
 
     final player = PlayerData(
       name: (row['name'] as String?) ?? '',
-      mainClass: (row['main_class'] as String?) ?? 'Web Developer',
-      sideClass: (row['side_class'] as String?) ?? 'Sec Analyst',
+      mainPath: (row['main_path'] as String?) ?? 'Shadow Arts',
+      sidePath: (row['side_path'] as String?) ?? 'Shadow Arts',
+      sect: (row['sect'] as String?) ?? '',
+      activePath: (row['active_path'] as String?) ?? '',
       level: (row['level'] as num?)?.toInt() ?? 1,
-      currentXP: (row['current_xp'] as num?)?.toDouble() ?? 0.0,
-      rep: (row['rep'] as num?)?.toInt() ?? 0,
-      classXp: _toDoubleMap(row['class_xp']),
-      classLevel: _toIntMap(row['class_level']),
+      qi: (row['qi'] as num?)?.toDouble() ?? 0.0,
+      spiritStones: (row['spirit_stones'] as num?)?.toInt() ?? 0,
+      pathQi: _toDoubleMap(row['path_qi']),
+      pathLevel: _toIntMap(row['path_level']),
       inventory: _toIntMap(row['inventory']),
-      streak: (row['streak'] as num?)?.toInt() ?? 0,
-      shields: (row['shields'] as num?)?.toInt() ?? 0,
+      daoHeartStreak: (row['dao_heart_streak'] as num?)?.toInt() ?? 0,
+      talismans: (row['talismans'] as num?)?.toInt() ?? 0,
       title: (row['title'] as String?) ?? '',
       hp: (row['hp'] as num?)?.toInt() ?? 100,
       maxHp: (row['max_hp'] as num?)?.toInt() ?? 100,
       equippedWeapon: (row['equipped_weapon'] as String?) ?? '',
-      activeBuffs: _toStringMap(row['active_buffs']),
+      activePills: _toStringMap(row['active_pills']),
       achievements: _toStringMap(row['achievements']),
       featuredAchievement: (row['featured_achievement'] as String?) ?? '',
-      questsCompleted: (row['quests_completed'] as num?)?.toInt() ?? 0,
+      trialsCompleted: (row['trials_completed'] as num?)?.toInt() ?? 0,
       monstersKilled: (row['monsters_killed'] as num?)?.toInt() ?? 0,
       equippedCosmetics: _toStringMap(row['equipped_cosmetics']),
+      weaponDurability: _toIntMap(row['weapon_durability']),
+      weaponLastUsed: _toStringMap(row['weapon_last_used']),
+      equippedWeapons: (row['equipped_weapons'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      realm: (row['realm'] as String?) ?? 'Mortal',
+      realmRank: (row['realm_rank'] as num?)?.toInt() ?? 1,
+      daoHeartState: (row['dao_heart_state'] as String?) ?? 'Wavering',
     );
 
     return (
@@ -82,41 +101,50 @@ class SupabaseService {
     );
   }
 
-  /// Upserts the player profile. Pass [checkinDate] to also update
-  /// the checked-in date. Pass [onboardingComplete] when finalising onboarding.
   static Future<void> saveProfile(
     String userId,
     PlayerData p, {
     String? checkinDate,
     bool? onboardingComplete,
+    String? originPlatform,
   }) async {
     final data = <String, dynamic>{
       'user_id': userId,
       'name': p.name,
-      'main_class': p.mainClass,
-      'side_class': p.sideClass,
+      'main_path': p.mainPath,
+      'side_path': p.sidePath,
+      'sect': p.sect,
+      'active_path': p.activePath,
       'level': p.level,
-      'current_xp': p.currentXP,
-      'rep': p.rep,
-      'class_xp': p.classXp,
-      'class_level': p.classLevel,
+      'qi': p.qi,
+      'spirit_stones': p.spiritStones,
+      'path_qi': p.pathQi,
+      'path_level': p.pathLevel,
       'inventory': p.inventory,
-      'streak': p.streak,
-      'shields': p.shields,
+      'dao_heart_streak': p.daoHeartStreak,
+      'talismans': p.talismans,
       'title': p.title,
       'hp': p.hp,
       'max_hp': p.maxHp,
       'equipped_weapon': p.equippedWeapon,
-      'active_buffs': p.activeBuffs,
+      'active_pills': p.activePills,
       'achievements': p.achievements,
       'featured_achievement': p.featuredAchievement,
-      'quests_completed': p.questsCompleted,
+      'trials_completed': p.trialsCompleted,
       'monsters_killed': p.monstersKilled,
       'equipped_cosmetics': p.equippedCosmetics,
+      'weapon_durability': p.weaponDurability,
+      'weapon_last_used': p.weaponLastUsed,
+      'equipped_weapons': p.equippedWeapons,
+      'realm': p.realm,
+      'realm_rank': p.realmRank,
+      'dao_heart_state': p.daoHeartState,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
-      'checked_in_date': ?checkinDate,
-      'onboarding_complete': ?onboardingComplete,
     };
+
+    if (checkinDate != null) data['checked_in_date'] = checkinDate;
+    if (onboardingComplete != null) data['onboarding_complete'] = onboardingComplete;
+    if (originPlatform != null) data['origin_platform'] = originPlatform;
 
     await _client
         .from('profiles')
@@ -124,7 +152,6 @@ class SupabaseService {
         .timeout(_timeout);
   }
 
-  /// Sets onboarding_complete = true for [userId].
   static Future<void> markOnboardingComplete(String userId) async {
     await _client
         .from('profiles')
@@ -135,7 +162,6 @@ class SupabaseService {
 
   // ── Quests ─────────────────────────────────────────────
 
-  /// Loads all quests for [userId].
   static Future<List<Quest>> loadQuests(String userId) async {
     final rows = await _client
         .from('quests')
@@ -148,9 +174,6 @@ class SupabaseService {
         .toList();
   }
 
-  /// Upserts all [quests] for [userId] in a single call.
-  /// When [quests] is empty, explicitly deletes all rows so expired quests
-  /// don't survive in the DB and re-trigger penalties on the next launch.
   static Future<void> saveQuests(String userId, List<Quest> quests) async {
     if (quests.isEmpty) {
       await _client.from('quests').delete().eq('user_id', userId).timeout(_timeout);
@@ -175,7 +198,6 @@ class SupabaseService {
 
   // ── Guild board ────────────────────────────────────────
 
-  /// Loads the guild board quests for [userId] on [date] (YYYY-MM-DD).
   static Future<List<Quest>> loadGuildBoard(
       String userId, String date) async {
     final rows = await _client
@@ -190,7 +212,6 @@ class SupabaseService {
         .toList();
   }
 
-  /// Upserts [quests] onto the guild board for [userId] on [date].
   static Future<void> saveGuildBoard(
       String userId, List<Quest> quests, String date) async {
     if (quests.isEmpty) return;
@@ -212,7 +233,6 @@ class SupabaseService {
 
   // ── Notifications ──────────────────────────────────────
 
-  /// Loads the 50 most recent notifications for [userId].
   static Future<List<GameNotification>> loadNotifications(String userId) async {
     final rows = await _client
         .from('notifications')
@@ -227,7 +247,6 @@ class SupabaseService {
         .toList();
   }
 
-  /// Inserts a single notification row for [userId].
   static Future<void> addNotification(
     String userId,
     String message,
@@ -240,14 +259,12 @@ class SupabaseService {
     }).timeout(_timeout);
   }
 
-  /// Deletes all notifications for [userId].
   static Future<void> clearNotifications(String userId) async {
     await _client.from('notifications').delete().eq('user_id', userId).timeout(_timeout);
   }
 
   // ── Personal Records ────────────────────────────────────
 
-  /// Loads all personal records for [userId], newest first.
   static Future<List<PersonalRecord>> loadPersonalRecords(String userId) async {
     final rows = await _client
         .from('personal_records')
@@ -261,7 +278,6 @@ class SupabaseService {
         .toList();
   }
 
-  /// Inserts a personal record and returns the server-generated row.
   static Future<PersonalRecord> addPersonalRecord(
     String userId, {
     required String title,
@@ -291,6 +307,208 @@ class SupabaseService {
         .timeout(_timeout);
 
     return PersonalRecord.fromRow(row);
+  }
+
+  // ── Sect Paths ────────────────────────────────────────
+
+  static Future<List<SectPath>> loadSectPaths(String sect) async {
+    final rows = await _client
+        .from('sect_paths')
+        .select()
+        .eq('sect', sect)
+        .timeout(_timeout);
+
+    return (rows as List<dynamic>)
+        .map((e) => SectPath.fromRow(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<List<SectPath>> loadAllSectPaths() async {
+    final rows = await _client
+        .from('sect_paths')
+        .select()
+        .timeout(_timeout);
+
+    return (rows as List<dynamic>)
+        .map((e) => SectPath.fromRow(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // ── Player Paths ─────────────────────────────────────
+
+  static Future<List<PlayerPath>> loadPlayerPaths(String userId) async {
+    final rows = await _client
+        .from('player_paths')
+        .select()
+        .eq('user_id', userId)
+        .timeout(_timeout);
+
+    return (rows as List<dynamic>)
+        .map((e) => PlayerPath.fromRow(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<PlayerPath> createPlayerPath(
+    String userId,
+    String pathId, {
+    String rank = 'F',
+  }) async {
+    final row = await _client
+        .from('player_paths')
+        .insert({
+          'user_id': userId,
+          'path_id': pathId,
+          'rank': rank,
+          'xp': 0,
+          'studied_topics': <String>[],
+          'accuracy_stats': <String, dynamic>{},
+        })
+        .select()
+        .single()
+        .timeout(_timeout);
+
+    return PlayerPath.fromRow(row);
+  }
+
+  static Future<void> savePlayerPath(PlayerPath pp) async {
+    await _client
+        .from('player_paths')
+        .update({
+          'rank': pp.rank,
+          'xp': pp.xp,
+          'studied_topics': pp.studiedTopics,
+          'accuracy_stats': pp.accuracyStats,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', pp.id)
+        .timeout(_timeout);
+  }
+
+  // ── Lesson Cache ────────────────────────────────────
+
+  static Future<Lesson?> loadCachedLesson({
+    required String pathId,
+    required String topic,
+    required String rank,
+  }) async {
+    final row = await _client
+        .from('lesson_cache')
+        .select()
+        .eq('path_id', pathId)
+        .eq('topic', topic)
+        .eq('rank', rank)
+        .maybeSingle()
+        .timeout(_timeout);
+
+    if (row == null) return null;
+    return Lesson.fromRow(row);
+  }
+
+  static Future<Lesson> saveCachedLesson({
+    required String pathId,
+    required String topic,
+    required String rank,
+    required String lessonContent,
+    required List<LessonQuiz> quizQuestions,
+  }) async {
+    final row = await _client
+        .from('lesson_cache')
+        .upsert({
+          'path_id': pathId,
+          'topic': topic,
+          'rank': rank,
+          'lesson_content': lessonContent,
+          'quiz_questions':
+              quizQuestions.map((q) => q.toJson()).toList(),
+        }, onConflict: 'path_id,topic,rank')
+        .select()
+        .single()
+        .timeout(_timeout);
+
+    return Lesson.fromRow(row);
+  }
+
+  // ── Weapons (Catalog) ────────────────────────────────
+
+  static Future<List<Weapon>> loadWeaponsForPath(String pathTag) async {
+    final rows = await _client
+        .from('weapons')
+        .select()
+        .eq('path_tag', pathTag)
+        .order('cost')
+        .timeout(_timeout);
+
+    return (rows as List<dynamic>)
+        .map((e) => Weapon.fromRow(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<List<Weapon>> loadWeaponsForSect(String sect) async {
+    final rows = await _client
+        .from('weapons')
+        .select()
+        .eq('sect', sect)
+        .order('path_tag')
+        .order('cost')
+        .timeout(_timeout);
+
+    return (rows as List<dynamic>)
+        .map((e) => Weapon.fromRow(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // ── Player Weapons (Owned) ───────────────────────────
+
+  static Future<List<PlayerWeapon>> loadPlayerWeapons(String userId) async {
+    final rows = await _client
+        .from('player_weapons')
+        .select('*, weapons(*)')
+        .eq('user_id', userId)
+        .timeout(_timeout);
+
+    return (rows as List<dynamic>)
+        .map((e) => PlayerWeapon.fromRow(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<PlayerWeapon> grantWeapon(
+    String userId,
+    String weaponId, {
+    bool equip = false,
+  }) async {
+    final row = await _client
+        .from('player_weapons')
+        .upsert({
+          'user_id': userId,
+          'weapon_id': weaponId,
+          'durability': 100,
+          'is_equipped': equip,
+        }, onConflict: 'user_id,weapon_id')
+        .select('*, weapons(*)')
+        .single()
+        .timeout(_timeout);
+
+    return PlayerWeapon.fromRow(row);
+  }
+
+  static Future<void> updatePlayerWeapon(PlayerWeapon pw) async {
+    await _client
+        .from('player_weapons')
+        .update({
+          'durability': pw.durability,
+          'is_equipped': pw.isEquipped,
+        })
+        .eq('id', pw.id)
+        .timeout(_timeout);
+  }
+
+  static Future<void> unequipAllWeapons(String userId) async {
+    await _client
+        .from('player_weapons')
+        .update({'is_equipped': false})
+        .eq('user_id', userId)
+        .eq('is_equipped', true)
+        .timeout(_timeout);
   }
 
   // ── Private helpers ────────────────────────────────────

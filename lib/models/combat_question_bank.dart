@@ -2,7 +2,7 @@ import 'combat_question.dart';
 
 class CombatQuestionBank {
   static List<CombatQuestion> get all => [
-        // ── Sec Analyst ────────────────────────────────────────
+        // ── Shadow Arts ────────────────────────────────────────
         // Weapon tags match shop arsenal: Recon Blade, Enum Staff,
         // Exploit Dagger, Stealth Cloak.
         CombatQuestion(
@@ -16,7 +16,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 1,
           weaponTag: 'Recon Blade',
-          classTag: 'Sec Analyst',
+          classTag: 'Shadow Arts',
           baseDamage: 120,
         ),
         CombatQuestion(
@@ -30,7 +30,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 2,
           weaponTag: 'Exploit Dagger',
-          classTag: 'Sec Analyst',
+          classTag: 'Shadow Arts',
           baseDamage: 110,
         ),
         CombatQuestion(
@@ -44,7 +44,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 1,
           weaponTag: 'Exploit Dagger',
-          classTag: 'Sec Analyst',
+          classTag: 'Shadow Arts',
           baseDamage: 130,
         ),
         CombatQuestion(
@@ -58,7 +58,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 1,
           weaponTag: 'Exploit Dagger',
-          classTag: 'Sec Analyst',
+          classTag: 'Shadow Arts',
           baseDamage: 125,
         ),
         CombatQuestion(
@@ -72,7 +72,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 2,
           weaponTag: 'Enum Staff',
-          classTag: 'Sec Analyst',
+          classTag: 'Shadow Arts',
           baseDamage: 115,
         ),
         CombatQuestion(
@@ -86,7 +86,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 2,
           weaponTag: 'Stealth Cloak',
-          classTag: 'Sec Analyst',
+          classTag: 'Shadow Arts',
           baseDamage: 135,
         ),
         CombatQuestion(
@@ -100,11 +100,11 @@ class CombatQuestionBank {
           ],
           correctIndex: 2,
           weaponTag: 'Recon Blade',
-          classTag: 'Sec Analyst',
+          classTag: 'Shadow Arts',
           baseDamage: 120,
         ),
 
-        // ── Mobile Developer ────────────────────────────────────
+        // ── Artifact Refiner ────────────────────────────────────
         // Weapon tags match shop arsenal: Code Forge, Debug Shield.
         CombatQuestion(
           id: 'q_mob_001',
@@ -118,7 +118,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 1,
           weaponTag: 'Code Forge',
-          classTag: 'Mobile Developer',
+          classTag: 'Artifact Refiner',
           baseDamage: 110,
         ),
         CombatQuestion(
@@ -132,7 +132,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 2,
           weaponTag: 'Code Forge',
-          classTag: 'Mobile Developer',
+          classTag: 'Artifact Refiner',
           baseDamage: 105,
         ),
         CombatQuestion(
@@ -146,7 +146,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 2,
           weaponTag: 'Code Forge',
-          classTag: 'Mobile Developer',
+          classTag: 'Artifact Refiner',
           baseDamage: 100,
         ),
         CombatQuestion(
@@ -160,11 +160,11 @@ class CombatQuestionBank {
           ],
           correctIndex: 2,
           weaponTag: 'Debug Shield',
-          classTag: 'Mobile Developer',
+          classTag: 'Artifact Refiner',
           baseDamage: 110,
         ),
 
-        // ── Web Developer / General ─────────────────────────────
+        // ── Formation Master / General ─────────────────────────────
         CombatQuestion(
           id: 'q_web_001',
           questionText: 'What does an HTTP GET request do?',
@@ -176,7 +176,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 1,
           weaponTag: 'Debug Shield',
-          classTag: 'Web Developer',
+          classTag: 'Formation Master',
           baseDamage: 100,
         ),
         CombatQuestion(
@@ -190,7 +190,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 1,
           weaponTag: 'Debug Shield',
-          classTag: 'Web Developer',
+          classTag: 'Formation Master',
           baseDamage: 105,
         ),
         CombatQuestion(
@@ -204,7 +204,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 3,
           weaponTag: 'Code Forge',
-          classTag: 'Web Developer',
+          classTag: 'Formation Master',
           baseDamage: 95,
         ),
         CombatQuestion(
@@ -218,7 +218,7 @@ class CombatQuestionBank {
           ],
           correctIndex: 1,
           weaponTag: 'Code Forge',
-          classTag: 'Web Developer',
+          classTag: 'Formation Master',
           baseDamage: 100,
         ),
       ];

@@ -7,6 +7,7 @@ import 'screens/guild_screen.dart';
 import 'screens/profile_screen.dart';
 import 'widgets/check_in_overlay.dart';
 import 'widgets/level_up_overlay.dart';
+import 'widgets/mystic_nav_bar.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -93,86 +94,15 @@ class _MainShellState extends State<MainShell> {
 
     return Scaffold(
       backgroundColor: bg,
+      extendBody: true, // Allows nav to blend with background
       body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: ValueListenableBuilder<bool>(
         valueListenable: checkedInNotifier,
-        builder: (_, checkedIn, _) => _buildBottomNav(cs, bg, checkedIn),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(ColorScheme cs, Color bg, bool checkedIn) {
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        border: Border(top: BorderSide(color: cs.outline, width: 1)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavTap,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: cs.primary,
-        unselectedItemColor: cs.onSurface.withValues(alpha: 0.25),
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        items: [
-          // Stats — cultivation base / dantian state
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.self_improvement),
-            activeIcon: Icon(Icons.self_improvement, size: 28),
-            label: 'Cultivation',
-          ),
-          // Trials — path challenges
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.history_edu),
-            activeIcon: Icon(Icons.history_edu, size: 28),
-            label: 'Trials',
-          ),
-          // Home — center FAB (meditation ritual button)
-          BottomNavigationBarItem(
-            icon: _buildCenterFab(cs, checkedIn),
-            label: '',
-          ),
-          // Sect — the cultivators' gathering
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.temple_hindu),
-            activeIcon: Icon(Icons.temple_hindu, size: 28),
-            label: 'Sect',
-          ),
-          // Identity — dao name and spirit root
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.person_4),
-            activeIcon: Icon(Icons.person_4, size: 28),
-            label: 'Identity',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCenterFab(ColorScheme cs, bool checkedIn) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: checkedIn
-            ? cs.primary.withValues(alpha: 0.55)
-            : cs.primary,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withValues(alpha: checkedIn ? 0.2 : 0.5),
-            blurRadius: 16,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Icon(
-        // Checked-in → sect base; not yet → lightning rune for meditation ritual
-        checkedIn ? Icons.fort : Icons.bolt,
-        color: Colors.white,
-        size: 24,
+        builder: (_, checkedIn, _) => MysticSectNav(
+          currentIndex: _selectedIndex,
+          onTap: _onNavTap,
+          checkedIn: checkedIn,
+        ),
       ),
     );
   }

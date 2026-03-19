@@ -37,9 +37,9 @@ class StatsScreen extends StatelessWidget {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(child: _buildClassSection('PRIMARY', player.mainClass, true, cs, player)),
+                            Expanded(child: _buildClassSection('PRIMARY', player.mainPath, true, cs, player)),
                             const SizedBox(width: 12),
-                            Expanded(child: _buildClassSection('SECONDARY', player.sideClass, false, cs, player)),
+                            Expanded(child: _buildClassSection('SECONDARY', player.sidePath, false, cs, player)),
                           ],
                         ),
                         const SizedBox(height: 32),
@@ -92,7 +92,7 @@ class StatsScreen extends StatelessWidget {
   }
 
   Widget _buildHunterLicense(ColorScheme cs, PlayerData player) {
-    final progress = player.maxXP > 0 ? player.currentXP / player.maxXP : 0.0;
+    final progress = player.maxQi > 0 ? player.qi / player.maxQi : 0.0;
     final frame = player.equippedCosmetics['Frame'];
 
     BoxDecoration decoration;
@@ -220,7 +220,7 @@ class StatsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  player.mainClass,
+                  player.mainPath,
                   style: GoogleFonts.jetBrainsMono(
                     color: cs.secondary,
                     fontSize: 13,
@@ -241,7 +241,7 @@ class StatsScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${player.currentXP.toInt()} / ${player.maxXP.toInt()}',
+                      '${player.qi.toInt()} / ${player.maxQi.toInt()}',
                       style: GoogleFonts.jetBrainsMono(
                         color: cs.onSurface.withValues(alpha: 0.6),
                         fontSize: 11,
@@ -282,9 +282,9 @@ class StatsScreen extends StatelessWidget {
   }
 
   Widget _buildClassSection(String label, String className, bool isMain, ColorScheme cs, PlayerData player) {
-    final xp = player.classXp[className] ?? 0.0;
-    final max = player.classMaxXP(className);
-    final lv = player.classLevel[className] ?? 1;
+    final xp = player.pathQi[className] ?? 0.0;
+    final max = player.pathMaxQi(className);
+    final lv = player.pathLevel[className] ?? 1;
     final progress = max > 0 ? xp / max : 0.0;
 
     return Container(
@@ -356,10 +356,10 @@ class StatsScreen extends StatelessWidget {
 
   // Stats per class: each entry is (stat name, base multiplier 0.0-1.0)
   static const _classStats = <String, List<(String, double)>>{
-    'Sec Analyst':       [('Recon', 0.9), ('Exploit', 0.8), ('Enum', 0.7), ('Stealth', 0.6)],
-    'Web Developer':     [('Frontend', 0.9), ('Backend', 0.7), ('Design', 0.8), ('Speed', 0.5)],
-    'Mobile Developer':  [('Performance', 0.9), ('UI Polish', 0.8), ('Cross-Platform', 0.7)],
-    'Game Developer':    [('Logic', 0.9), ('Math', 0.7), ('Assets', 0.6), ('Speed', 0.8)],
+    'Shadow Arts':       [('Recon', 0.9), ('Exploit', 0.8), ('Enum', 0.7), ('Stealth', 0.6)],
+    'Formation Master':  [('Frontend', 0.9), ('Backend', 0.7), ('Design', 0.8), ('Speed', 0.5)],
+    'Artifact Refiner':  [('Performance', 0.9), ('UI Polish', 0.8), ('Cross-Platform', 0.7)],
+    'Realm Architect':   [('Logic', 0.9), ('Math', 0.7), ('Assets', 0.6), ('Speed', 0.8)],
   };
 
   static const _defaultStats = <(String, double)>[
@@ -376,8 +376,8 @@ class StatsScreen extends StatelessWidget {
   }
 
   Widget _buildRadarChartSection(ColorScheme cs, PlayerData player) {
-    final mainLevel = player.classLevel[player.mainClass] ?? 1;
-    final stats = _statsForClass(player.mainClass, mainLevel);
+    final mainLevel = player.pathLevel[player.mainPath] ?? 1;
+    final stats = _statsForClass(player.mainPath, mainLevel);
 
     // If there's less than 3 stats, radar chart fails to draw a polygon. Ensure min 3.
     final renderStats = stats.length >= 3 ? stats : _defaultStats;

@@ -38,23 +38,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _sectionLabel('VISUAL DAO', cs),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     _buildThemeToggle(cs),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
                     _sectionLabel('FUTURE REVELATIONS', cs),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     _buildComingSoon(cs),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 40),
                     _buildSignOut(cs),
-                    const SizedBox(height: 24),
-                    _sectionLabel('SYSTEM DEBUG', cs),
-                    const SizedBox(height: 8),
-                    _buildDebugRow(cs),
-                    const SizedBox(height: 8),
-                    _buildDebugBossFight(cs),
-                    const SizedBox(height: 8),
-                    _buildDebugAddRep(cs),
                     const SizedBox(height: 32),
+                    _sectionLabel('SYSTEM DEBUG', cs),
+                    const SizedBox(height: 12),
+                    _buildTimeDebugRow(cs),
+                    const SizedBox(height: 12),
+                    _buildDebugRow(cs),
+                    const SizedBox(height: 12),
+                    _buildDebugBossFight(cs),
+                    const SizedBox(height: 12),
+                    _buildDebugAddRep(cs),
+                    const SizedBox(height: 40),
                     _buildVersion(cs),
                   ],
                 ),
@@ -65,6 +67,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     ),
   );
+  }
+
+  Widget _buildTimeDebugRow(ColorScheme cs) {
+    return ValueListenableBuilder<TimeRevelation>(
+      valueListenable: timeRevelationNotifier,
+      builder: (context, current, _) {
+        return Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: cs.outline, width: 1),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _timeDebugOption('Dawn', TimeRevelation.dawn, current, cs),
+                _timeDebugOption('Morn', TimeRevelation.morning, current, cs),
+                _timeDebugOption('Eve', TimeRevelation.evening, current, cs),
+                _timeDebugOption('Auto', TimeRevelation.auto, current, cs),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _timeDebugOption(String label, TimeRevelation mode, TimeRevelation current, ColorScheme cs) {
+    final selected = current == mode;
+    return GestureDetector(
+      onTap: () => timeRevelationNotifier.value = mode,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? cs.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.black : cs.onSurface.withValues(alpha: 0.4),
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildTopBar(BuildContext context, ColorScheme cs) {
@@ -290,7 +342,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return GestureDetector(
       onTap: () async {
         final prev = playerNotifier.value;
-        await gameService.updatePlayer(prev.copyWith(rep: prev.rep + 2000));
+        await gameService.updatePlayer(prev.copyWith(spiritStones: prev.spiritStones + 2000));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('[DEBUG] +2000 Stones added')),

@@ -102,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen>
             ValueListenableBuilder<PlayerData>(
               valueListenable: playerNotifier,
               builder: (_, player, _) =>
-                  _buildXPSection(cs, player.currentXP, player.maxXP),
+                  _buildXPSection(cs, player.qi, player.maxQi),
             ),
             // Dao Path tracks
             ValueListenableBuilder<PlayerData>(
@@ -227,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           const SizedBox(height: 3),
           Text(
-            player.mainClass,
+            player.mainPath,
             style: TextStyle(
               color: cs.brightness == Brightness.dark ? cs.primary : cs.onSurface,
               fontSize: 13,
@@ -253,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen>
           _buildStatBadge(
             icon: Icons.local_fire_department,
             iconColor: streakColor,
-            label: '${player.streak}-day heart',
+            label: '${player.daoHeartStreak}-day heart',
             cs: cs,
           ),
           const SizedBox(width: 12),
@@ -261,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen>
           _buildStatBadge(
             icon: Icons.auto_awesome,
             iconColor: shieldColor,
-            label: '${player.shields} talisman${player.shields == 1 ? '' : 's'}',
+            label: '${player.talismans} talisman${player.talismans == 1 ? '' : 's'}',
             cs: cs,
           ),
           const SizedBox(width: 12),
@@ -269,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen>
           _buildStatBadge(
             icon: Icons.stars,
             iconColor: const Color(0xFFFBBF24),
-            label: '${player.rep} stones',
+            label: '${player.spiritStones} stones',
             cs: cs,
           ),
         ],
@@ -303,8 +303,8 @@ class _HomeScreenState extends State<HomeScreen>
   // ── Active Pill Badges ──────────────────────────────────
 
   Widget _buildBuffBadges(ColorScheme cs, PlayerData player) {
-    final activeBuffEntries = player.activeBuffs.entries
-        .where((e) => player.isBuffActive(e.key))
+    final activeBuffEntries = player.activePills.entries
+        .where((e) => player.isPillActive(e.key))
         .toList();
 
     if (activeBuffEntries.isEmpty) return const SizedBox(height: 6);
@@ -452,17 +452,17 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   IconData _iconForClass(String title) {
-    if (title.contains('Sec')) return Icons.security;
-    if (title.contains('Web')) return Icons.code;
-    if (title.contains('Mobile')) return Icons.settings_input_component;
-    if (title.contains('Game')) return Icons.sports_esports;
+    if (title.contains('Shadow')) return Icons.security;
+    if (title.contains('Formation')) return Icons.code;
+    if (title.contains('Artifact')) return Icons.settings_input_component;
+    if (title.contains('Realm')) return Icons.sports_esports;
     if (title.contains('Network')) return Icons.hub;
     if (title.contains('Data')) return Icons.storage;
     return Icons.auto_awesome;
   }
 
   Widget _buildCharacterAura(ColorScheme cs, PlayerData player) {
-    final classIcon = _iconForClass(player.mainClass);
+    final classIcon = _iconForClass(player.mainPath);
 
     return Center(
       child: AnimatedBuilder(
@@ -702,20 +702,20 @@ class _HomeScreenState extends State<HomeScreen>
   // ── Dao Path Tracks ────────────────────────────────────────
 
   Widget _buildClassTracks(ColorScheme cs, PlayerData player) {
-    final mw = player.mainClass.split(' ').first;
+    final mw = player.mainPath.split(' ').first;
     final mainLabel =
         (mw.length >= 3 ? mw.substring(0, 3) : mw).toUpperCase();
-    final sw = player.sideClass.split(' ').first;
+    final sw = player.sidePath.split(' ').first;
     final sideLabel =
         (sw.length >= 3 ? sw.substring(0, 3) : sw).toUpperCase();
 
-    final mainXp = player.classXp[player.mainClass] ?? 0.0;
-    final mainMax = player.classMaxXP(player.mainClass);
-    final sideXp = player.classXp[player.sideClass] ?? 0.0;
-    final sideMax = player.classMaxXP(player.sideClass);
+    final mainXp = player.pathQi[player.mainPath] ?? 0.0;
+    final mainMax = player.pathMaxQi(player.mainPath);
+    final sideXp = player.pathQi[player.sidePath] ?? 0.0;
+    final sideMax = player.pathMaxQi(player.sidePath);
 
-    final mainLv = player.classLevel[player.mainClass] ?? 1;
-    final sideLv = player.classLevel[player.sideClass] ?? 1;
+    final mainLv = player.pathLevel[player.mainPath] ?? 1;
+    final sideLv = player.pathLevel[player.sidePath] ?? 1;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
@@ -727,7 +727,7 @@ class _HomeScreenState extends State<HomeScreen>
               progress: mainMax > 0 ? mainXp / mainMax : 0.0,
               level: mainLv,
               isMain: true,
-              icon: _classIcon(player.mainClass),
+              icon: _classIcon(player.mainPath),
               cs: cs,
             ),
           ),
@@ -738,7 +738,7 @@ class _HomeScreenState extends State<HomeScreen>
               progress: sideMax > 0 ? sideXp / sideMax : 0.0,
               level: sideLv,
               isMain: false,
-              icon: _classIcon(player.sideClass),
+              icon: _classIcon(player.sidePath),
               cs: cs,
             ),
           ),

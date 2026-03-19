@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 import '../constants.dart';
 import '../models/player_data.dart';
 import '../models/quest.dart';
@@ -86,7 +87,7 @@ class GuildMasterService {
         .join('\n');
 
     return '''You are the Guild Master of Rizen — a real-life RPG.
-The player is ${livePlayer.name}, Level ${livePlayer.level}, ${livePlayer.mainClass} / ${livePlayer.sideClass}.
+The player is ${livePlayer.name}, Level ${livePlayer.level}, ${livePlayer.mainPath} / ${livePlayer.sidePath}.
 Their active quests:
 ${activeQuests.isEmpty ? '  (none)' : activeQuests}
 
@@ -166,7 +167,7 @@ Respond with valid JSON only. No markdown, no code fences, no explanation outsid
         Uri.parse(AppConstants.openAiApiUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${AppConstants.openAiApiKey}',
+          'Authorization': 'Bearer $openAiApiKey',
         },
         body: jsonEncode({
         'model': AppConstants.openAiModel,

@@ -97,7 +97,7 @@ class PersonalRecordsScreen extends StatelessWidget {
           icon: Icons.local_fire_department,
           iconColor: const Color(0xFFFF6B35),
           label: 'Dao Heart Stability',
-          value: '${player.streak} days',
+          value: '${player.daoHeartStreak} days',
         ),
         const SizedBox(height: 8),
         _bestCard(
@@ -105,7 +105,7 @@ class PersonalRecordsScreen extends StatelessWidget {
           icon: Icons.stars,
           iconColor: const Color(0xFFFFD700),
           label: 'Total Stones Earned',
-          value: _formatNumber(player.rep),
+          value: _formatNumber(player.spiritStones),
         ),
         const SizedBox(height: 8),
         _bestCard(
@@ -113,7 +113,7 @@ class PersonalRecordsScreen extends StatelessWidget {
           icon: Icons.task_alt,
           iconColor: Colors.green,
           label: 'Trials Overcome',
-          value: '${player.questsCompleted}',
+          value: '${player.trialsCompleted}',
         ),
         const SizedBox(height: 8),
         _bestCard(
@@ -176,8 +176,8 @@ class PersonalRecordsScreen extends StatelessWidget {
   }
 
   Widget _buildStatsOverview(ColorScheme cs, PlayerData player) {
-    final mainLv = player.classLevel[player.mainClass] ?? 1;
-    final sideLv = player.classLevel[player.sideClass] ?? 1;
+    final mainLv = player.pathLevel[player.mainPath] ?? 1;
+    final sideLv = player.pathLevel[player.sidePath] ?? 1;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -190,9 +190,9 @@ class PersonalRecordsScreen extends StatelessWidget {
         children: [
           _overviewRow(cs, 'Realm Level', 'Lv ${player.level}'),
           const SizedBox(height: 10),
-          _overviewRow(cs, _displayPathName(player.mainClass), 'Lv $mainLv', badge: 'PRIMARY'),
+          _overviewRow(cs, _displayPathName(player.mainPath), 'Lv $mainLv', badge: 'PRIMARY'),
           const SizedBox(height: 10),
-          _overviewRow(cs, _displayPathName(player.sideClass), 'Lv $sideLv'),
+          _overviewRow(cs, _displayPathName(player.sidePath), 'Lv $sideLv'),
           const SizedBox(height: 10),
           _overviewRow(cs, 'Heavenly Merits', '${player.achievements.length}'),
         ],
@@ -249,16 +249,16 @@ class PersonalRecordsScreen extends StatelessWidget {
   Widget _buildMilestones(ColorScheme cs, PlayerData player) {
     final milestones = <_Milestone>[];
 
-    if (player.questsCompleted >= 1) {
+    if (player.trialsCompleted >= 1) {
       milestones.add(_Milestone('First Trial Realized', Icons.task_alt));
     }
-    if (player.questsCompleted >= 10) {
+    if (player.trialsCompleted >= 10) {
       milestones.add(_Milestone('10 Trials Completed', Icons.task_alt));
     }
-    if (player.questsCompleted >= 50) {
+    if (player.trialsCompleted >= 50) {
       milestones.add(_Milestone('50 Trials Overcome', Icons.task_alt));
     }
-    if (player.questsCompleted >= 100) {
+    if (player.trialsCompleted >= 100) {
       milestones.add(_Milestone('Centenary Trial Milestone', Icons.task_alt));
     }
     if (player.monstersKilled >= 1) {
@@ -359,15 +359,7 @@ class PersonalRecordsScreen extends StatelessWidget {
     return '$n';
   }
 
-  String _displayPathName(String className) {
-    const map = {
-      'Sec Analyst': 'Shadow Arts',
-      'Game Developer': 'Realm Architect',
-      'Web Developer': 'Formation Master',
-      'Mobile Developer': 'Artifact Refiner',
-    };
-    return map[className] ?? className;
-  }
+  String _displayPathName(String className) => className;
 }
 
 class _Milestone {

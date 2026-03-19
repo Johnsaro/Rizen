@@ -62,6 +62,8 @@ class _AuthScreenState extends State<AuthScreen> {
         await Supabase.instance.client.auth.signUp(
           email: email,
           password: password,
+          // Gemini Edit (2026-03-18): Added metadata to mark platform origin since Alex is unavailable
+          data: {'origin_platform': 'flutter'},
         );
 
         if (!mounted) return;

@@ -301,7 +301,7 @@ class _ShopScreenState extends State<ShopScreen> {
       }
       return;
     }
-    if (player.rep < cost) {
+    if (player.spiritStones < cost) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -399,7 +399,7 @@ class _ShopScreenState extends State<ShopScreen> {
                   Icon(Icons.stars, color: cs.secondary, size: 14),
                   const SizedBox(width: 5),
                   Text(
-                    '${player.rep} Stones',
+                    '${player.spiritStones} Stones',
                     style: GoogleFonts.jetBrainsMono(
                       color: cs.secondary,
                       fontSize: 12,
@@ -622,7 +622,7 @@ class _ShopScreenState extends State<ShopScreen> {
             final item = _consumables[i];
             final owned = player.inventory[item.name] ?? 0;
             final isDeferred = _deferredConsumables.contains(item.name);
-            final isActive = player.isBuffActive(item.name);
+            final isActive = player.isPillActive(item.name);
 
             // Item Name mapping
             String displayName = item.name;
@@ -830,7 +830,7 @@ class _ShopScreenState extends State<ShopScreen> {
     int cost,
     PlayerData player,
   ) {
-    final canAfford = player.rep >= cost;
+    final canAfford = player.spiritStones >= cost;
     return GestureDetector(
       onTap: canAfford ? () => _handlePurchase(itemName, cost) : null,
       child: Container(
@@ -1095,7 +1095,7 @@ class _ShopScreenState extends State<ShopScreen> {
       valueListenable: playerNotifier,
       builder: (_, player, _) {
         final owned = player.inventory.containsKey(itemName);
-        final canAfford = player.rep >= cost;
+        final canAfford = player.spiritStones >= cost;
 
         if (owned) {
           return Container(
@@ -1142,14 +1142,5 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-  // Path name display mapping
-  String _displayPathName(String className) {
-    const map = {
-      'Sec Analyst': 'Shadow Arts',
-      'Game Developer': 'Realm Architect',
-      'Web Developer': 'Formation Master',
-      'Mobile Developer': 'Artifact Refiner',
-    };
-    return map[className] ?? className;
-  }
+  String _displayPathName(String className) => className;
 }

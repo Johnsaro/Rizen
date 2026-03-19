@@ -77,7 +77,7 @@ class _TierTwoCombatScreenState extends State<TierTwoCombatScreen>
         monsterMaxHp: widget.bossMaxHp,
         playerHp: player.hp,
         playerMaxHp: player.maxHp,
-        playerXP: player.currentXP,
+        playerXP: player.qi,
         playerLevel: player.level,
       );
     });
@@ -97,8 +97,8 @@ class _TierTwoCombatScreenState extends State<TierTwoCombatScreen>
   List<CombatQuestion> _classFilteredFallback(PlayerData player) {
     final filtered = CombatQuestionBank.all
         .where((q) =>
-            q.classTag == player.mainClass ||
-            q.classTag == player.sideClass ||
+            q.classTag == player.mainPath ||
+            q.classTag == player.sidePath ||
             q.classTag == 'Any')
         .toList();
     return filtered.isNotEmpty ? filtered : CombatQuestionBank.all;

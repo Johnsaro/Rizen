@@ -58,6 +58,8 @@ class GameService {
 
       var result = await SupabaseService.loadProfile(_userId);
 
+      debugPrint('[GameService] loadProfile result for $_userId: ${result != null ? "found" : "null"}');
+
       // Web-registered users have auth metadata (full_name, class) but no
       // profile row yet. Auto-create their profile so they skip GM onboarding.
       if (result == null) {
@@ -66,19 +68,30 @@ class GameService {
         final webName = (meta['full_name'] as String?)?.trim() ?? '';
         final webClass = (meta['class'] as String?)?.trim() ?? '';
 
+        debugPrint('[GameService] No onboarded profile — checking auth metadata: name="$webName" class="$webClass" allMeta=$meta');
+
+        // Web signup already stores V2 path names — use directly
+        final resolvedPath = webClass.isNotEmpty ? webClass : 'Formation Master';
+
         if (webName.isNotEmpty) {
+          debugPrint('[GameService] Auto-creating profile: name="$webName" mainPath="$resolvedPath" (raw class="$webClass")');
           final webPlayer = PlayerData(
             name: webName,
-            mainClass: webClass.isNotEmpty ? webClass : 'Web Developer',
-            sideClass: 'Sec Analyst',
+            mainPath: resolvedPath,
+            sidePath: 'Shadow Arts',
           );
           await SupabaseService.saveProfile(
             _userId,
             webPlayer,
             onboardingComplete: true,
+            // Gemini Edit (2026-03-18): Added originPlatform to distinguish web/flutter users since Alex is unavailable
+            originPlatform: 'browser',
           );
           // Re-load so the rest of loadAll sees the freshly created row
           result = await SupabaseService.loadProfile(_userId);
+          debugPrint('[GameService] Re-loaded after auto-create: ${result != null ? "success" : "STILL NULL"}');
+        } else {
+          debugPrint('[GameService] Cannot auto-create — webName is empty. User needs Flutter onboarding.');
         }
       }
 
@@ -103,18 +116,18 @@ class GameService {
             final missedDays = dayDiff - 1; // gap of 2 days = 1 missed day
 
             if (missedDays > 0) {
-              int streak = player.streak;
-              int shields = player.shields;
+              int streak = player.daoHeartStreak;
+              int talismans = player.talismans;
 
-              // Consume shields first, then break streak only if they ran out
-              final consumed = shields > missedDays ? missedDays : shields;
-              shields -= consumed;
+              // Consume talismans first, then break streak only if they ran out
+              final consumed = talismans > missedDays ? missedDays : talismans;
+              talismans -= consumed;
               if (missedDays > consumed) {
                 streak = 0;
               }
 
-              if (streak != player.streak || shields != player.shields) {
-                final penalized = player.copyWith(streak: streak, shields: shields);
+              if (streak != player.daoHeartStreak || talismans != player.talismans) {
+                final penalized = player.copyWith(daoHeartStreak: streak, talismans: talismans);
                 // Only commit penalty if Supabase write succeeds — prevents double-deduction on crash
                 try {
                   await SupabaseService.saveProfile(_userId, penalized);
@@ -137,21 +150,24 @@ class GameService {
           player = player.copyWith(featuredAchievement: '');
         }
 
-        // Clean expired buffs on load and persist if any were removed.
+        // Clean expired pills on load and persist if any were removed.
         // Always use cleaned state locally — even if DB save fails, expired
-        // buffs return false from isBuffActive() so gameplay is unaffected.
+        // pills return false from isPillActive() so gameplay is unaffected.
         // The save is best-effort to keep DB in sync.
-        final cleaned = player.cleanExpiredBuffs();
+        final cleaned = player.cleanExpiredPills();
         if (!identical(cleaned, player)) {
           player = cleaned;
           try {
             await SupabaseService.saveProfile(_userId, player);
           } catch (e) {
-            debugPrint('Failed to persist cleaned buffs: $e');
+            debugPrint('Failed to persist cleaned pills: $e');
           }
         }
         playerNotifier.value = player;
       }
+
+      // Weapon durability idle decay
+      await applyDurabilityDecay();
 
       final quests = await SupabaseService.loadQuests(_userId);
       if (quests.isNotEmpty) {
@@ -195,26 +211,26 @@ class GameService {
       final activeQuest = prevQuests.where((q) => q.id == quest.id).firstOrNull;
       if (activeQuest == null || activeQuest.isCompleted) return false;
 
-      final repGain = (quest.xpReward * 0.1).round();
+      final stoneGain = (quest.xpReward * 0.1).round();
       final updatedQuests = prevQuests
           .map((q) => q.id == quest.id ? q.copyWith(isCompleted: true) : q)
           .toList();
-      var updatedPlayer = _awardXPAndRep(
+      var updatedPlayer = _awardQiAndStones(
         prevPlayer,
         quest.xpReward,
-        repGain,
+        stoneGain,
         classTag: quest.classTag,
         isQuestReward: true,
       );
-      // Consume XP Surge AFTER multiplier was applied but BEFORE save —
+      // Consume Qi Surge AFTER multiplier was applied but BEFORE save —
       // this way rollback to prevPlayer still has the surge intact.
-      if (prevPlayer.isBuffActive('XP Surge')) {
-        final cleanedBuffs = Map<String, String>.from(updatedPlayer.activeBuffs)
-          ..remove('XP Surge');
-        updatedPlayer = updatedPlayer.copyWith(activeBuffs: cleanedBuffs);
+      if (prevPlayer.isPillActive('Qi Surge Pill')) {
+        final cleanedPills = Map<String, String>.from(updatedPlayer.activePills)
+          ..remove('Qi Surge Pill');
+        updatedPlayer = updatedPlayer.copyWith(activePills: cleanedPills);
       }
       updatedPlayer = updatedPlayer.copyWith(
-        questsCompleted: updatedPlayer.questsCompleted + 1,
+        trialsCompleted: updatedPlayer.trialsCompleted + 1,
       );
       final newAchievements = <String>[];
       updatedPlayer = _checkAndUnlockAchievements(updatedPlayer, newUnlocks: newAchievements);
@@ -307,21 +323,21 @@ class GameService {
     final prevCheckedIn = checkedInNotifier.value;
 
     final today = DateTime.now().toIso8601String().substring(0, 10);
-    final newStreak = prevPlayer.streak + 1;
+    final newStreak = prevPlayer.daoHeartStreak + 1;
 
     // Milestone rewards — re-trigger on every rebuild (simpler, more motivating)
-    int bonusRep = 0;
-    int bonusShields = 0;
-    if (newStreak == 7)   { bonusRep = 200;   bonusShields = 1; }
-    if (newStreak == 30)  { bonusRep = 500; }
-    if (newStreak == 60)  { bonusRep = 1000; }
-    if (newStreak == 100) { bonusRep = 2000; }
-    if (newStreak == 365) { bonusRep = 2000; }
+    int bonusStones = 0;
+    int bonusTalismans = 0;
+    if (newStreak == 7)   { bonusStones = 200;   bonusTalismans = 1; }
+    if (newStreak == 30)  { bonusStones = 500; }
+    if (newStreak == 60)  { bonusStones = 1000; }
+    if (newStreak == 100) { bonusStones = 2000; }
+    if (newStreak == 365) { bonusStones = 2000; }
 
-    // Base check-in rewards: +50 XP, +5 Rep (+ any milestone bonus)
-    var updatedPlayer = _awardXPAndRep(prevPlayer, 50, 5 + bonusRep, classTag: 'Any');
-    final newShields = (updatedPlayer.shields + bonusShields).clamp(0, 3);
-    updatedPlayer = updatedPlayer.copyWith(streak: newStreak, shields: newShields);
+    // Base check-in rewards: +50 Qi, +5 Spirit Stones (+ any milestone bonus)
+    var updatedPlayer = _awardQiAndStones(prevPlayer, 50, 5 + bonusStones, classTag: 'Any');
+    final newTalismans = (updatedPlayer.talismans + bonusTalismans).clamp(0, 3);
+    updatedPlayer = updatedPlayer.copyWith(daoHeartStreak: newStreak, talismans: newTalismans);
     final newAchievements = <String>[];
     updatedPlayer = _checkAndUnlockAchievements(updatedPlayer, newUnlocks: newAchievements);
 
@@ -336,9 +352,9 @@ class GameService {
         '"You have arrived. The guild acknowledges your presence."',
         NotificationType.checkin,
       );
-      if (bonusRep > 0) {
+      if (bonusStones > 0) {
         _createNotification(
-          '"$newStreak day streak. The guild recognizes your dedication. +$bonusRep Rep awarded."',
+          '"$newStreak day streak. The guild recognizes your dedication. +$bonusStones Spirit Stones awarded."',
           NotificationType.streakMilestone,
         );
       }
@@ -413,21 +429,21 @@ class GameService {
           updatedPlayer = prevPlayer.useInstantItem(itemName).copyWith(hp: newHp);
 
         case 'Shield Charge':
-          if (prevPlayer.shields >= 3) return 'Shields already at max (3)';
+          if (prevPlayer.talismans >= 3) return 'Talismans already at max (3)';
           updatedPlayer = prevPlayer.useInstantItem(itemName)
-              .copyWith(shields: (prevPlayer.shields + 1).clamp(0, 3));
+              .copyWith(talismans: (prevPlayer.talismans + 1).clamp(0, 3));
 
         case 'Focus Boost':
-          if (prevPlayer.isBuffActive('Focus Boost')) return 'Focus Boost is already active';
-          updatedPlayer = prevPlayer.activateBuff('Focus Boost', itemName, const Duration(hours: 2));
+          if (prevPlayer.isPillActive('Focus Boost')) return 'Focus Boost is already active';
+          updatedPlayer = prevPlayer.activatePill('Focus Boost', itemName, const Duration(hours: 2));
 
         case 'Double Rep':
-          if (prevPlayer.isBuffActive('Double Rep')) return 'Double Rep is already active';
-          updatedPlayer = prevPlayer.activateBuff('Double Rep', itemName, const Duration(hours: 1));
+          if (prevPlayer.isPillActive('Double Rep')) return 'Double Rep is already active';
+          updatedPlayer = prevPlayer.activatePill('Double Rep', itemName, const Duration(hours: 1));
 
         case 'XP Surge':
-          if (prevPlayer.isBuffActive('XP Surge')) return 'XP Surge is already active';
-          updatedPlayer = prevPlayer.activateXPSurge();
+          if (prevPlayer.isPillActive('XP Surge')) return 'XP Surge is already active';
+          updatedPlayer = prevPlayer.activateQiSurge();
 
         case 'Durability Kit':
         case 'Time Warp':
@@ -462,6 +478,7 @@ class GameService {
     PlayerData updated, {
     String? checkinDate,
     bool? onboardingComplete,
+    String? originPlatform,
   }) async {
     if (!_hasSession) return;
     final prevPlayer = playerNotifier.value;
@@ -473,6 +490,7 @@ class GameService {
         updated,
         checkinDate: checkinDate,
         onboardingComplete: onboardingComplete,
+        originPlatform: originPlatform,
       );
     } catch (e) {
       playerNotifier.value = prevPlayer;
@@ -538,12 +556,12 @@ class GameService {
     if (!_hasSession) return;
     final prevPlayer = playerNotifier.value;
 
-    var updatedPlayer = _awardXPAndRep(prevPlayer, xpReward, 0, classTag: classTag, isQuestReward: true);
-    // Consume XP Surge after multiplier applied — rollback to prevPlayer preserves it
-    if (prevPlayer.isBuffActive('XP Surge')) {
-      final cleanedBuffs = Map<String, String>.from(updatedPlayer.activeBuffs)
-        ..remove('XP Surge');
-      updatedPlayer = updatedPlayer.copyWith(activeBuffs: cleanedBuffs);
+    var updatedPlayer = _awardQiAndStones(prevPlayer, xpReward, 0, classTag: classTag, isQuestReward: true);
+    // Consume Qi Surge after multiplier applied — rollback to prevPlayer preserves it
+    if (prevPlayer.isPillActive('Qi Surge Pill')) {
+      final cleanedPills = Map<String, String>.from(updatedPlayer.activePills)
+        ..remove('Qi Surge Pill');
+      updatedPlayer = updatedPlayer.copyWith(activePills: cleanedPills);
     }
     updatedPlayer = updatedPlayer.copyWith(
       hp: updatedPlayer.maxHp,
@@ -578,8 +596,8 @@ class GameService {
   Future<void> applyCombatFlee(int xpPenalty) async {
     if (!_hasSession) return;
     final prevPlayer = playerNotifier.value;
-    final newXP = (prevPlayer.currentXP - xpPenalty).clamp(0.0, prevPlayer.currentXP);
-    final updatedPlayer = prevPlayer.copyWith(currentXP: newXP, hp: prevPlayer.maxHp);
+    final newQi = (prevPlayer.qi - xpPenalty).clamp(0.0, prevPlayer.qi);
+    final updatedPlayer = prevPlayer.copyWith(qi: newQi, hp: prevPlayer.maxHp);
     playerNotifier.value = updatedPlayer;
 
     try {
@@ -599,8 +617,8 @@ class GameService {
     if (!_hasSession) return;
     final prevPlayer = playerNotifier.value;
 
-    final newXP = (prevPlayer.currentXP - xpLoss).clamp(0.0, prevPlayer.currentXP);
-    final updatedPlayer = prevPlayer.copyWith(currentXP: newXP, hp: prevPlayer.maxHp);
+    final newQi = (prevPlayer.qi - xpLoss).clamp(0.0, prevPlayer.qi);
+    final updatedPlayer = prevPlayer.copyWith(qi: newQi, hp: prevPlayer.maxHp);
     playerNotifier.value = updatedPlayer;
 
     try {
@@ -609,9 +627,126 @@ class GameService {
         '"You have been defeated. -$xpLoss XP lost. The guild awaits your return."',
         NotificationType.streakBreak,
       );
+      // Apply durability loss to equipped weapons on death
+      await applyWeaponDurabilityLoss(15);
     } catch (e) {
       playerNotifier.value = prevPlayer;
       errorNotifier.value = 'Failed to save combat result. Try again.';
+    }
+  }
+
+  // ── Weapon durability ───────────────────────────────────────
+
+  /// Applies idle durability decay based on days since last use.
+  /// Called once in loadAll(). Idempotent — uses weaponLastUsed dates.
+  Future<void> applyDurabilityDecay() async {
+    if (!_hasSession) return;
+    final player = playerNotifier.value;
+    if (player.weaponDurability.isEmpty) return;
+
+    final today = DateTime.now();
+    final todayStr = today.toIso8601String().substring(0, 10);
+    final newDurability = Map<String, int>.from(player.weaponDurability);
+    final newLastUsed = Map<String, String>.from(player.weaponLastUsed);
+    bool changed = false;
+    final equippedSet = player.equippedWeapons.toSet();
+
+    for (final weapon in newDurability.keys.toList()) {
+      final lastUsedStr = newLastUsed[weapon];
+      if (lastUsedStr == null || lastUsedStr == todayStr) continue;
+
+      final lastUsed = DateTime.tryParse(lastUsedStr);
+      if (lastUsed == null) continue;
+
+      final daysSince = today.difference(lastUsed).inDays;
+      if (daysSince < 2) continue;
+
+      final isEquipped = equippedSet.contains(weapon);
+      // Equipped weapons decay at half rate
+      final effectiveDays = isEquipped ? (daysSince / 2).ceil() : daysSince;
+
+      int newDur = newDurability[weapon] ?? 100;
+      if (effectiveDays >= 7) {
+        newDur = 0;
+      } else if (effectiveDays >= 6) {
+        newDur = (newDur * 0.4).round().clamp(0, 100);
+      } else if (effectiveDays >= 4) {
+        newDur = (newDur * 0.7).round().clamp(0, 100);
+      }
+      // 2-3 days: warning only, no durability change
+
+      if (newDur != newDurability[weapon]) {
+        newDurability[weapon] = newDur;
+        changed = true;
+      }
+
+      // Notify on any weapon at risk
+      if (effectiveDays >= 2 && effectiveDays < 4) {
+        _createNotification(
+          '"Your $weapon is gathering dust. Use it or lose it."',
+          NotificationType.info,
+        );
+      }
+    }
+
+    if (changed) {
+      final updated = player.copyWith(weaponDurability: newDurability);
+      playerNotifier.value = updated;
+      try {
+        await SupabaseService.saveProfile(_userId, updated);
+      } catch (e) {
+        debugPrint('Failed to persist durability decay: $e');
+      }
+    }
+  }
+
+  /// Repairs a weapon to full durability (100). Called after Flashcard Repair Mode.
+  Future<void> repairWeapon(String weaponName) async {
+    if (!_hasSession) return;
+    final prevPlayer = playerNotifier.value;
+    final newDurability = Map<String, int>.from(prevPlayer.weaponDurability);
+    final newLastUsed = Map<String, String>.from(prevPlayer.weaponLastUsed);
+    newDurability[weaponName] = 100;
+    newLastUsed[weaponName] = DateTime.now().toIso8601String().substring(0, 10);
+
+    final updated = prevPlayer.copyWith(
+      weaponDurability: newDurability,
+      weaponLastUsed: newLastUsed,
+    );
+    playerNotifier.value = updated;
+
+    try {
+      await SupabaseService.saveProfile(_userId, updated);
+      _createNotification(
+        '"$weaponName has been restored to full refinement."',
+        NotificationType.info,
+      );
+    } catch (e) {
+      playerNotifier.value = prevPlayer;
+      errorNotifier.value = 'Failed to repair weapon. Try again.';
+    }
+  }
+
+  /// Deducts durability from equipped weapons on combat death.
+  Future<void> applyWeaponDurabilityLoss(int amount) async {
+    if (!_hasSession) return;
+    final prevPlayer = playerNotifier.value;
+    if (prevPlayer.equippedWeapons.isEmpty) return;
+
+    final newDurability = Map<String, int>.from(prevPlayer.weaponDurability);
+    for (final weapon in prevPlayer.equippedWeapons) {
+      final current = newDurability[weapon] ?? 100;
+      newDurability[weapon] = (current - amount).clamp(0, 100);
+    }
+
+    final updated = prevPlayer.copyWith(weaponDurability: newDurability);
+    playerNotifier.value = updated;
+
+    try {
+      await SupabaseService.saveProfile(_userId, updated);
+    } catch (e) {
+      playerNotifier.value = prevPlayer;
+      debugPrint('Failed to persist durability loss: $e');
     }
   }
 
@@ -669,10 +804,10 @@ class GameService {
   }
 
   PlayerData _applyMainQuestPenalty(PlayerData player) {
-    final newXP = (player.currentXP * 0.6).floorToDouble();
-    final bottomed = player.level == 1 && newXP == 0;
+    final newQi = (player.qi * 0.6).floorToDouble();
+    final bottomed = player.level == 1 && newQi == 0;
     return player.copyWith(
-      currentXP: newXP,
+      qi: newQi,
       title: bottomed ? 'Lazy Sloth Slave' : player.title,
     );
   }
@@ -730,7 +865,7 @@ class GameService {
         metricType: metricType,
         metricValue: metricValue,
         tags: tags,
-        streakContext: playerNotifier.value.streak,
+        streakContext: playerNotifier.value.daoHeartStreak,
       );
       prNotifier.value = [record, ...prNotifier.value];
       _createNotification(
@@ -746,40 +881,40 @@ class GameService {
 
   // ── Private helpers ──────────────────────────────────────
 
-  /// Centralises XP + Rep arithmetic so all reward paths use the same logic.
-  /// Applies active buff multipliers (Focus Boost, XP Surge, Double Rep).
+  /// Centralises Qi + Spirit Stone arithmetic so all reward paths use the same logic.
+  /// Applies active pill multipliers (Focus Boost, Qi Surge, Double Rep).
   /// Set [isQuestReward] to true when called from quest completion or combat
-  /// victory — only those paths apply the XP Surge multiplier.
+  /// victory — only those paths apply the Qi Surge multiplier.
   ///
-  /// NOTE: This method no longer removes XP Surge from activeBuffs. Callers
+  /// NOTE: This method no longer removes Qi Surge from activePills. Callers
   /// that consume surge must remove it themselves BEFORE the Supabase save,
-  /// so that a failed save + rollback preserves the buff correctly.
-  PlayerData _awardXPAndRep(
+  /// so that a failed save + rollback preserves the pill correctly.
+  PlayerData _awardQiAndStones(
     PlayerData player,
-    int xp,
-    int rep, {
+    int qi,
+    int stones, {
     String classTag = 'Any',
     bool isQuestReward = false,
   }) {
-    double xpMultiplier = 1.0;
-    double repMultiplier = 1.0;
+    double qiMultiplier = 1.0;
+    double stoneMultiplier = 1.0;
 
-    if (player.isBuffActive('Focus Boost')) {
-      xpMultiplier += 0.5;
+    if (player.isPillActive('Focus Boost')) {
+      qiMultiplier += 0.5;
     }
-    if (player.isBuffActive('XP Surge') && isQuestReward) {
-      xpMultiplier += 1.0;
+    if (player.isPillActive('XP Surge') && isQuestReward) {
+      qiMultiplier += 1.0;
     }
-    if (player.isBuffActive('Double Rep')) {
-      repMultiplier += 1.0;
+    if (player.isPillActive('Double Rep')) {
+      stoneMultiplier += 1.0;
     }
 
-    final effectiveXP = (xp * xpMultiplier).round();
-    final effectiveRep = (rep * repMultiplier).round();
+    final effectiveQi = (qi * qiMultiplier).round();
+    final effectiveStones = (stones * stoneMultiplier).round();
 
     return player
-        .addXP(effectiveXP, classTag: classTag)
-        .addRep(effectiveRep);
+        .addQi(effectiveQi, pathTag: classTag)
+        .addSpiritStones(effectiveStones);
   }
 
   /// Creates a notification locally and persists it to Supabase.
@@ -816,8 +951,8 @@ class GameService {
       if (a == null || a.comingSoon) return;
       achievements[id] = now;
       newUnlocks?.add(id);
-      if (a.repReward > 0) {
-        updated = updated.copyWith(achievements: achievements).addRep(a.repReward);
+      if (a.spiritStoneReward > 0) {
+        updated = updated.copyWith(achievements: achievements).addSpiritStones(a.spiritStoneReward);
       }
       if (a.titleReward != null) {
         updated = updated.copyWith(title: a.titleReward, achievements: achievements);
@@ -825,19 +960,19 @@ class GameService {
     }
 
     // ── Consistency (streak) ──────────────────────────────
-    if (updated.streak >= 1)   unlock('first_step');
-    if (updated.streak >= 7)   unlock('the_consistent');
-    if (updated.streak >= 30)  unlock('unwavering');
-    if (updated.streak >= 100) unlock('the_relentless');
-    if (updated.streak >= 365) unlock('ascendant');
+    if (updated.daoHeartStreak >= 1)   unlock('first_step');
+    if (updated.daoHeartStreak >= 7)   unlock('the_consistent');
+    if (updated.daoHeartStreak >= 30)  unlock('unwavering');
+    if (updated.daoHeartStreak >= 100) unlock('the_relentless');
+    if (updated.daoHeartStreak >= 365) unlock('ascendant');
 
     // ── Level milestones ──────────────────────────────────
     if (updated.level >= 10) unlock('level_10');
     if (updated.level >= 25) unlock('level_25');
 
     // ── Quests ────────────────────────────────────────────
-    if (updated.questsCompleted >= 1)  unlock('quest_taker');
-    if (updated.questsCompleted >= 50) unlock('grinder');
+    if (updated.trialsCompleted >= 1)  unlock('quest_taker');
+    if (updated.trialsCompleted >= 50) unlock('grinder');
 
     // ── Combat ────────────────────────────────────────────
     if (updated.monstersKilled >= 1)  unlock('first_blood');

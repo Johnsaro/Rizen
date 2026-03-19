@@ -68,7 +68,7 @@ class _CombatScreenState extends State<CombatScreen> {
         monsterMaxHp: widget.monsterMaxHp,
         playerHp: player.hp,
         playerMaxHp: player.maxHp,
-        playerXP: player.currentXP,
+        playerXP: player.qi,
         playerLevel: player.level,
       );
     });
@@ -86,8 +86,8 @@ class _CombatScreenState extends State<CombatScreen> {
   List<CombatQuestion> _classFilteredFallback(PlayerData player) {
     final filtered = CombatQuestionBank.all
         .where((q) =>
-            q.classTag == player.mainClass ||
-            q.classTag == player.sideClass ||
+            q.classTag == player.mainPath ||
+            q.classTag == player.sidePath ||
             q.classTag == 'Any')
         .toList();
     return filtered.isNotEmpty ? filtered : CombatQuestionBank.all;

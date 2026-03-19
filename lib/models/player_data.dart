@@ -1,67 +1,99 @@
 class PlayerData {
   final String name;
   final int level;
-  final String mainClass;
-  final String sideClass;
-  final double currentXP;
-  final int rep;
-  final Map<String, double> classXp;
-  final Map<String, int> classLevel;
+  final String mainPath;
+  final String sidePath;
+  final String sect;
+  final String activePath;
+  final double qi;
+  final int spiritStones;
+  final Map<String, double> pathQi;
+  final Map<String, int> pathLevel;
   final Map<String, int> inventory;
-  final int streak;
-  final int shields;
+  final int daoHeartStreak;
+  final int talismans;
   final String title;
   final int hp;
   final int maxHp;
   final String equippedWeapon;
-  final Map<String, String> activeBuffs;
+  final Map<String, String> activePills;
   final Map<String, String> achievements;
   final String featuredAchievement;
-  final int questsCompleted;
+  final int trialsCompleted;
   final int monstersKilled;
   final Map<String, String> equippedCosmetics;
+  final Map<String, int> weaponDurability;
+  final Map<String, String> weaponLastUsed;
+  final List<String> equippedWeapons;
+  final String realm;
+  final int realmRank;
+  final String daoHeartState;
 
   const PlayerData({
     required this.name,
-    required this.mainClass,
-    required this.sideClass,
+    required this.mainPath,
+    required this.sidePath,
+    this.sect = '',
+    this.activePath = '',
     this.level = 1,
-    this.currentXP = 0,
-    this.rep = 0,
-    this.classXp = const <String, double>{},
-    this.classLevel = const <String, int>{},
+    this.qi = 0,
+    this.spiritStones = 0,
+    this.pathQi = const <String, double>{},
+    this.pathLevel = const <String, int>{},
     this.inventory = const <String, int>{},
-    this.streak = 0,
-    this.shields = 0,
+    this.daoHeartStreak = 0,
+    this.talismans = 0,
     this.title = '',
     this.hp = 100,
     this.maxHp = 100,
     this.equippedWeapon = '',
-    this.activeBuffs = const <String, String>{},
+    this.activePills = const <String, String>{},
     this.achievements = const <String, String>{},
     this.featuredAchievement = '',
-    this.questsCompleted = 0,
+    this.trialsCompleted = 0,
     this.monstersKilled = 0,
     this.equippedCosmetics = const <String, String>{},
+    this.weaponDurability = const <String, int>{},
+    this.weaponLastUsed = const <String, String>{},
+    this.equippedWeapons = const <String>[],
+    this.realm = 'Mortal',
+    this.realmRank = 1,
+    this.daoHeartState = 'Wavering',
   });
 
-  // Overall maxXP scales with level: Lv1=150, Lv2=300, etc.
-  double get maxXP => level * 150.0;
+  // Overall maxQi scales with level: Lv1=150, Lv2=300, etc.
+  double get maxQi => level * 150.0;
 
-  // Per-class XP threshold
-  double classMaxXP(String cls) => (classLevel[cls] ?? 1) * 150.0;
+  // Per-path Qi threshold
+  double pathMaxQi(String path) => (pathLevel[path] ?? 1) * 150.0;
 
-  static const empty = PlayerData(name: '', mainClass: 'Developer', sideClass: 'Sec Analyst', streak: 0, shields: 0, title: '', achievements: {}, featuredAchievement: '', questsCompleted: 0, monstersKilled: 0, equippedCosmetics: {});
+  static const empty = PlayerData(
+    name: '',
+    mainPath: 'Shadow Arts',
+    sidePath: 'Shadow Arts',
+    sect: '',
+    activePath: '',
+    daoHeartStreak: 0,
+    talismans: 0,
+    title: '',
+    achievements: {},
+    featuredAchievement: '',
+    trialsCompleted: 0,
+    monstersKilled: 0,
+    equippedCosmetics: {},
+    weaponDurability: {},
+    weaponLastUsed: {},
+    equippedWeapons: [],
+  );
 
-  /// Returns true if [buffName] is currently active (not expired).
+  /// Returns true if [pillName] is currently active (not expired).
   /// Handles both ISO timestamps and `next_quest|TTL` format.
-  bool isBuffActive(String buffName) {
-    final expiry = activeBuffs[buffName];
+  bool isPillActive(String pillName) {
+    final expiry = activePills[pillName];
     if (expiry == null) return false;
     if (expiry.startsWith('next_quest')) {
-      // Format: 'next_quest|ISO_TTL' — check TTL if present
       final parts = expiry.split('|');
-      if (parts.length < 2) return false; // malformed — treat as expired for safe cleanup
+      if (parts.length < 2) return false;
       try {
         return DateTime.parse(parts[1]).isAfter(DateTime.now());
       } catch (_) {
@@ -75,14 +107,14 @@ class PlayerData {
     }
   }
 
-  /// Returns a copy with all expired buffs removed.
-  PlayerData cleanExpiredBuffs() {
+  /// Returns a copy with all expired pills removed.
+  PlayerData cleanExpiredPills() {
     final now = DateTime.now();
-    final cleaned = Map<String, String>.from(activeBuffs)
+    final cleaned = Map<String, String>.from(activePills)
       ..removeWhere((_, expiry) {
         if (expiry.startsWith('next_quest')) {
           final parts = expiry.split('|');
-          if (parts.length < 2) return false; // legacy, keep
+          if (parts.length < 2) return false;
           try {
             return !DateTime.parse(parts[1]).isAfter(now);
           } catch (_) {
@@ -95,8 +127,8 @@ class PlayerData {
           return true;
         }
       });
-    if (cleaned.length == activeBuffs.length) return this;
-    return copyWith(activeBuffs: cleaned);
+    if (cleaned.length == activePills.length) return this;
+    return copyWith(activePills: cleaned);
   }
 
   /// Decrements inventory count for [itemName]. Removes key if count reaches 0.
@@ -111,181 +143,138 @@ class PlayerData {
     return copyWith(inventory: newInventory);
   }
 
-  /// Adds a timed buff and decrements inventory.
-  PlayerData activateBuff(String buffName, String itemName, Duration duration) {
-    final newBuffs = Map<String, String>.from(activeBuffs);
-    newBuffs[buffName] = DateTime.now().add(duration).toUtc().toIso8601String();
-    return useInstantItem(itemName).copyWith(activeBuffs: newBuffs);
+  /// Adds a timed pill and decrements inventory.
+  PlayerData activatePill(String pillName, String itemName, Duration duration) {
+    final newPills = Map<String, String>.from(activePills);
+    newPills[pillName] = DateTime.now().add(duration).toUtc().toIso8601String();
+    return useInstantItem(itemName).copyWith(activePills: newPills);
   }
 
-  /// Adds the XP Surge marker with a 7-day TTL and decrements inventory.
-  /// The marker is consumed on next quest completion. The TTL prevents
-  /// permanent blocking if no quest is ever completed.
-  PlayerData activateXPSurge() {
-    final newBuffs = Map<String, String>.from(activeBuffs);
+  /// Adds the Qi Surge marker with a 7-day TTL and decrements inventory.
+  PlayerData activateQiSurge() {
+    final newPills = Map<String, String>.from(activePills);
     final ttl = DateTime.now().add(const Duration(days: 7)).toUtc().toIso8601String();
-    newBuffs['XP Surge'] = 'next_quest|$ttl';
-    return useInstantItem('XP Surge').copyWith(activeBuffs: newBuffs);
+    newPills['Qi Surge Pill'] = 'next_quest|$ttl';
+    return useInstantItem('Qi Surge Pill').copyWith(activePills: newPills);
   }
 
-  /// Adds [amount] XP to the overall level and to the class track(s).
-  /// If [classTag] == 'Any', both mainClass and sideClass receive XP.
-  /// Otherwise only the matching class track is updated.
-  PlayerData addXP(int amount, {String classTag = 'Any'}) {
-    // Overall level progression
-    double xp = currentXP + amount;
+  /// Adds [amount] Qi to the overall level and to the path track(s).
+  /// If [pathTag] == 'Any', both mainPath and sidePath receive Qi.
+  PlayerData addQi(int amount, {String pathTag = 'Any'}) {
+    double xp = qi + amount;
     int lv = level;
     while (xp >= lv * 150.0) {
       xp -= lv * 150.0;
       lv++;
     }
 
-    // Class-track progression
-    final newClassXp = Map<String, double>.from(classXp);
-    final newClassLevel = Map<String, int>.from(classLevel);
+    final newPathQi = Map<String, double>.from(pathQi);
+    final newPathLevel = Map<String, int>.from(pathLevel);
 
-    void applyClassXP(String cls) {
-      double clsXp = (newClassXp[cls] ?? 0.0) + amount;
-      int clsLv = newClassLevel[cls] ?? 1;
-      while (clsXp >= clsLv * 150.0) {
-        clsXp -= clsLv * 150.0;
-        clsLv++;
+    void applyPathQi(String path) {
+      double pQi = (newPathQi[path] ?? 0.0) + amount;
+      int pLv = newPathLevel[path] ?? 1;
+      while (pQi >= pLv * 150.0) {
+        pQi -= pLv * 150.0;
+        pLv++;
       }
-      newClassXp[cls] = clsXp;
-      newClassLevel[cls] = clsLv;
+      newPathQi[path] = pQi;
+      newPathLevel[path] = pLv;
     }
 
-    if (classTag == 'Any') {
-      applyClassXP(mainClass);
-      applyClassXP(sideClass);
+    if (pathTag == 'Any') {
+      applyPathQi(mainPath);
+      applyPathQi(sidePath);
     } else {
-      applyClassXP(classTag);
+      applyPathQi(pathTag);
     }
 
     return PlayerData(
-      name: name,
-      mainClass: mainClass,
-      sideClass: sideClass,
-      level: lv,
-      currentXP: xp,
-      rep: rep,
-      classXp: newClassXp,
-      classLevel: newClassLevel,
-      inventory: inventory,
-      streak: streak,
-      shields: shields,
-      title: title,
-      hp: hp,
-      maxHp: maxHp,
-      equippedWeapon: equippedWeapon,
-      activeBuffs: activeBuffs,
-      achievements: achievements,
-      featuredAchievement: featuredAchievement,
-      questsCompleted: questsCompleted,
-      monstersKilled: monstersKilled,
-      equippedCosmetics: equippedCosmetics,
+      name: name, mainPath: mainPath, sidePath: sidePath, sect: sect,
+      activePath: activePath, level: lv, qi: xp, spiritStones: spiritStones,
+      pathQi: newPathQi, pathLevel: newPathLevel, inventory: inventory,
+      daoHeartStreak: daoHeartStreak, talismans: talismans, title: title,
+      hp: hp, maxHp: maxHp, equippedWeapon: equippedWeapon,
+      activePills: activePills, achievements: achievements,
+      featuredAchievement: featuredAchievement, trialsCompleted: trialsCompleted,
+      monstersKilled: monstersKilled, equippedCosmetics: equippedCosmetics,
+      weaponDurability: weaponDurability, weaponLastUsed: weaponLastUsed,
+      equippedWeapons: equippedWeapons, realm: realm, realmRank: realmRank,
+      daoHeartState: daoHeartState,
     );
   }
 
-  PlayerData addRep(int amount) {
-    return PlayerData(
-      name: name,
-      mainClass: mainClass,
-      sideClass: sideClass,
-      level: level,
-      currentXP: currentXP,
-      rep: rep + amount,
-      classXp: classXp,
-      classLevel: classLevel,
-      inventory: inventory,
-      streak: streak,
-      shields: shields,
-      title: title,
-      hp: hp,
-      maxHp: maxHp,
-      equippedWeapon: equippedWeapon,
-      activeBuffs: activeBuffs,
-      achievements: achievements,
-      featuredAchievement: featuredAchievement,
-      questsCompleted: questsCompleted,
-      monstersKilled: monstersKilled,
-      equippedCosmetics: equippedCosmetics,
-    );
+  PlayerData addSpiritStones(int amount) {
+    return copyWith(spiritStones: spiritStones + amount);
   }
 
   PlayerData buyItem(String item, int cost) {
     final newInventory = Map<String, int>.from(inventory);
     newInventory[item] = (newInventory[item] ?? 0) + 1;
-    return PlayerData(
-      name: name,
-      mainClass: mainClass,
-      sideClass: sideClass,
-      level: level,
-      currentXP: currentXP,
-      rep: rep - cost,
-      classXp: classXp,
-      classLevel: classLevel,
-      inventory: newInventory,
-      streak: streak,
-      shields: shields,
-      title: title,
-      hp: hp,
-      maxHp: maxHp,
-      equippedWeapon: equippedWeapon,
-      activeBuffs: activeBuffs,
-      achievements: achievements,
-      featuredAchievement: featuredAchievement,
-      questsCompleted: questsCompleted,
-      monstersKilled: monstersKilled,
-      equippedCosmetics: equippedCosmetics,
-    );
+    return copyWith(inventory: newInventory, spiritStones: spiritStones - cost);
   }
 
   PlayerData copyWith({
     String? name,
-    String? mainClass,
-    String? sideClass,
+    String? mainPath,
+    String? sidePath,
+    String? sect,
+    String? activePath,
     int? level,
-    double? currentXP,
-    int? rep,
-    Map<String, double>? classXp,
-    Map<String, int>? classLevel,
+    double? qi,
+    int? spiritStones,
+    Map<String, double>? pathQi,
+    Map<String, int>? pathLevel,
     Map<String, int>? inventory,
-    int? streak,
-    int? shields,
+    int? daoHeartStreak,
+    int? talismans,
     String? title,
     int? hp,
     int? maxHp,
     String? equippedWeapon,
-    Map<String, String>? activeBuffs,
+    Map<String, String>? activePills,
     Map<String, String>? achievements,
     String? featuredAchievement,
-    int? questsCompleted,
+    int? trialsCompleted,
     int? monstersKilled,
     Map<String, String>? equippedCosmetics,
+    Map<String, int>? weaponDurability,
+    Map<String, String>? weaponLastUsed,
+    List<String>? equippedWeapons,
+    String? realm,
+    int? realmRank,
+    String? daoHeartState,
   }) {
     return PlayerData(
       name: name ?? this.name,
-      mainClass: mainClass ?? this.mainClass,
-      sideClass: sideClass ?? this.sideClass,
+      mainPath: mainPath ?? this.mainPath,
+      sidePath: sidePath ?? this.sidePath,
+      sect: sect ?? this.sect,
+      activePath: activePath ?? this.activePath,
       level: level ?? this.level,
-      currentXP: currentXP ?? this.currentXP,
-      rep: rep ?? this.rep,
-      classXp: classXp ?? this.classXp,
-      classLevel: classLevel ?? this.classLevel,
+      qi: qi ?? this.qi,
+      spiritStones: spiritStones ?? this.spiritStones,
+      pathQi: pathQi ?? this.pathQi,
+      pathLevel: pathLevel ?? this.pathLevel,
       inventory: inventory ?? this.inventory,
-      streak: streak ?? this.streak,
-      shields: shields ?? this.shields,
+      daoHeartStreak: daoHeartStreak ?? this.daoHeartStreak,
+      talismans: talismans ?? this.talismans,
       title: title ?? this.title,
       hp: hp ?? this.hp,
       maxHp: maxHp ?? this.maxHp,
       equippedWeapon: equippedWeapon ?? this.equippedWeapon,
-      activeBuffs: activeBuffs ?? this.activeBuffs,
+      activePills: activePills ?? this.activePills,
       achievements: achievements ?? this.achievements,
       featuredAchievement: featuredAchievement ?? this.featuredAchievement,
-      questsCompleted: questsCompleted ?? this.questsCompleted,
+      trialsCompleted: trialsCompleted ?? this.trialsCompleted,
       monstersKilled: monstersKilled ?? this.monstersKilled,
       equippedCosmetics: equippedCosmetics ?? this.equippedCosmetics,
+      weaponDurability: weaponDurability ?? this.weaponDurability,
+      weaponLastUsed: weaponLastUsed ?? this.weaponLastUsed,
+      equippedWeapons: equippedWeapons ?? this.equippedWeapons,
+      realm: realm ?? this.realm,
+      realmRank: realmRank ?? this.realmRank,
+      daoHeartState: daoHeartState ?? this.daoHeartState,
     );
   }
 }

@@ -8,6 +8,11 @@ import 'services/game_service.dart';
 // Global player data — set after onboarding, read by all screens
 final playerNotifier = ValueNotifier<PlayerData>(PlayerData.empty);
 
+enum TimeRevelation { auto, dawn, morning, evening }
+
+// Global background state — controls which sect image and animation plays
+final timeRevelationNotifier = ValueNotifier<TimeRevelation>(TimeRevelation.auto);
+
 // Check-in status for today — updated by GameService, read by MainShell nav icon
 final checkedInNotifier = ValueNotifier<bool>(false);
 

@@ -109,7 +109,7 @@ class ProfileScreen extends StatelessWidget {
   ) {
     final name = player.name;
     final level = player.level;
-    final mainClass = player.mainClass;
+    final mainClass = player.mainPath;
     final title = player.title;
 
     final frame = player.equippedCosmetics['Frame'];
@@ -279,18 +279,18 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildClassTracks(ColorScheme cs, PlayerData player) {
-    final mainXp = player.classXp[player.mainClass] ?? 0.0;
-    final mainMax = player.classMaxXP(player.mainClass);
-    final mainLv = player.classLevel[player.mainClass] ?? 1;
+    final mainXp = player.pathQi[player.mainPath] ?? 0.0;
+    final mainMax = player.pathMaxQi(player.mainPath);
+    final mainLv = player.pathLevel[player.mainPath] ?? 1;
 
-    final sideXp = player.classXp[player.sideClass] ?? 0.0;
-    final sideMax = player.classMaxXP(player.sideClass);
-    final sideLv = player.classLevel[player.sideClass] ?? 1;
+    final sideXp = player.pathQi[player.sidePath] ?? 0.0;
+    final sideMax = player.pathMaxQi(player.sidePath);
+    final sideLv = player.pathLevel[player.sidePath] ?? 1;
 
     return Column(
       children: [
         _classTrackRow(
-          player.mainClass,
+          player.mainPath,
           true,
           mainMax > 0 ? mainXp / mainMax : 0.0,
           mainLv,
@@ -298,7 +298,7 @@ class ProfileScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _classTrackRow(
-          player.sideClass,
+          player.sidePath,
           false,
           sideMax > 0 ? sideXp / sideMax : 0.0,
           sideLv,
@@ -381,8 +381,8 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildCoreStats(ColorScheme cs, PlayerData player) {
-    final devLevel = player.classLevel[player.mainClass] ?? 1;
-    final secLevel = player.classLevel[player.sideClass] ?? 1;
+    final devLevel = player.pathLevel[player.mainPath] ?? 1;
+    final secLevel = player.pathLevel[player.sidePath] ?? 1;
 
     final problemSolving = (devLevel * 10 / 5).round().clamp(0, 10);
     final recon = (secLevel * 10 / 5).round().clamp(0, 10);
