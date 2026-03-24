@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'config.dart';
 import 'main_shell.dart';
 import 'models/app_config.dart';
@@ -16,6 +17,9 @@ import 'app_state.dart';
 // Global theme notifier — accessible from any screen
 final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.dark);
 
+// Global app config — set once at startup, read by settings for update check
+AppConfig currentAppConfig = const AppConfig();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -24,6 +28,7 @@ void main() async {
 
   // ── Check remote app config (maintenance / version gates) ──
   final config = await SupabaseService.loadAppConfig();
+  currentAppConfig = config;
 
   if (config.maintenanceMode) {
     runApp(RizenApp(home: MaintenanceScreen(message: config.maintenanceMessage)));
@@ -35,6 +40,7 @@ void main() async {
       home: UpdateRequiredScreen(
         latestVersion: config.minVersion,
         message: config.updateMessage,
+        downloadUrl: config.downloadUrl,
       ),
     ));
     return;
@@ -80,6 +86,7 @@ void main() async {
     showUpdateNudge: showUpdateNudge,
     latestVersion: config.latestVersion,
     updateMessage: config.updateMessage,
+    downloadUrl: config.downloadUrl,
   ));
 }
 
@@ -88,6 +95,7 @@ class RizenApp extends StatelessWidget {
   final bool showUpdateNudge;
   final String latestVersion;
   final String updateMessage;
+  final String downloadUrl;
 
   const RizenApp({
     super.key,
@@ -95,6 +103,7 @@ class RizenApp extends StatelessWidget {
     this.showUpdateNudge = false,
     this.latestVersion = '',
     this.updateMessage = '',
+    this.downloadUrl = '',
   });
 
   @override
@@ -111,6 +120,7 @@ class RizenApp extends StatelessWidget {
             ? _UpdateNudgeWrapper(
                 latestVersion: latestVersion,
                 updateMessage: updateMessage,
+                downloadUrl: downloadUrl,
                 child: home,
               )
             : home,
@@ -124,11 +134,13 @@ class _UpdateNudgeWrapper extends StatefulWidget {
   final Widget child;
   final String latestVersion;
   final String updateMessage;
+  final String downloadUrl;
 
   const _UpdateNudgeWrapper({
     required this.child,
     required this.latestVersion,
     required this.updateMessage,
+    this.downloadUrl = '',
   });
 
   @override
@@ -185,6 +197,17 @@ class _UpdateNudgeWrapperState extends State<_UpdateNudgeWrapper> {
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('LATER'),
           ),
+          if (widget.downloadUrl.isNotEmpty)
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                launchUrl(
+                  Uri.parse(widget.downloadUrl),
+                  mode: LaunchMode.externalApplication,
+                );
+              },
+              child: const Text('UPDATE'),
+            ),
         ],
       ),
     );

@@ -6,6 +6,7 @@ class AppConfig {
   final String minVersion;
   final String latestVersion;
   final String updateMessage;
+  final String downloadUrl;
 
   const AppConfig({
     this.maintenanceMode = false,
@@ -13,6 +14,7 @@ class AppConfig {
     this.minVersion = '1.0.0',
     this.latestVersion = '1.0.0',
     this.updateMessage = '',
+    this.downloadUrl = '',
   });
 
   /// Fallback when the config table can't be reached (network error, etc.).
@@ -26,6 +28,7 @@ class AppConfig {
       minVersion: (row['min_version'] as String?) ?? '1.0.0',
       latestVersion: (row['latest_version'] as String?) ?? '1.0.0',
       updateMessage: (row['update_message'] as String?) ?? '',
+      downloadUrl: (row['download_url'] as String?) ?? '',
     );
   }
 }

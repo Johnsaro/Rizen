@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../config.dart';
 import '../main.dart';
 import '../app_state.dart';
+import '../models/app_config.dart';
 import '../models/player_data.dart';
 import '../services/guest_session.dart';
+import '../services/supabase_service.dart';
 import '../theme/night_guild_background.dart';
 import 'auth_screen.dart';
 import 'combat/combat_screen.dart';
@@ -60,6 +64,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 12),
                     _buildDebugAddRep(cs),
                     const SizedBox(height: 40),
+                    _buildCheckForUpdates(cs),
+                    const SizedBox(height: 16),
                     _buildVersion(cs),
                   ],
                 ),
@@ -509,10 +515,122 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  bool _isCheckingUpdate = false;
+
+  Future<void> _checkForUpdates() async {
+    if (_isCheckingUpdate) return;
+    setState(() => _isCheckingUpdate = true);
+
+    try {
+      final config = await SupabaseService.loadAppConfig();
+      currentAppConfig = config;
+
+      if (!mounted) return;
+      final cs = Theme.of(context).colorScheme;
+      final hasUpdate = compareVersions(appVersion, config.latestVersion) < 0;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: cs.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: cs.outline),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                hasUpdate ? Icons.system_update : Icons.check_circle_outline,
+                color: hasUpdate ? cs.primary : Colors.green,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                hasUpdate ? 'Update Available' : 'Up to Date',
+                style: TextStyle(color: cs.onSurface, fontSize: 16),
+              ),
+            ],
+          ),
+          content: Text(
+            hasUpdate
+                ? 'Version ${config.latestVersion} is available.\nYou have v$appVersion.'
+                : 'You are running the latest version (v$appVersion).',
+            style: TextStyle(
+              color: cs.onSurface.withValues(alpha: 0.7),
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(hasUpdate ? 'LATER' : 'OK'),
+            ),
+            if (hasUpdate && config.downloadUrl.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  launchUrl(
+                    Uri.parse(config.downloadUrl),
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+                child: const Text('DOWNLOAD'),
+              ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not check for updates. Try again later.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCheckingUpdate = false);
+    }
+  }
+
+  Widget _buildCheckForUpdates(ColorScheme cs) {
+    return GestureDetector(
+      onTap: _isCheckingUpdate ? null : _checkForUpdates,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: cs.outline, width: 1),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.system_update, color: cs.onSurface.withValues(alpha: 0.5), size: 20),
+            const SizedBox(width: 12),
+            Text(
+              'Check for Updates',
+              style: TextStyle(color: cs.onSurface.withValues(alpha: 0.5), fontSize: 13),
+            ),
+            const Spacer(),
+            if (_isCheckingUpdate)
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: cs.onSurface.withValues(alpha: 0.3),
+                ),
+              )
+            else
+              Icon(Icons.chevron_right, color: cs.onSurface.withValues(alpha: 0.3), size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildVersion(ColorScheme cs) {
     return Center(
       child: Text(
-        'Cultivation System v2.0.0',
+        'Cultivation System v$appVersion',
         style: TextStyle(
           color: cs.onSurface.withValues(alpha: 0.2),
           fontSize: 12,

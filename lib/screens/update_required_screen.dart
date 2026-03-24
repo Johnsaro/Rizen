@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config.dart';
 
 /// Full-screen blocker shown when the installed app version is below
@@ -7,11 +8,13 @@ import '../config.dart';
 class UpdateRequiredScreen extends StatelessWidget {
   final String latestVersion;
   final String message;
+  final String downloadUrl;
 
   const UpdateRequiredScreen({
     super.key,
     required this.latestVersion,
     this.message = '',
+    this.downloadUrl = '',
   });
 
   @override
@@ -62,6 +65,25 @@ class UpdateRequiredScreen extends StatelessWidget {
                   fontSize: 12,
                 ),
               ),
+              if (downloadUrl.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => launchUrl(
+                    Uri.parse(downloadUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text('DOWNLOAD UPDATE'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: cs.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
