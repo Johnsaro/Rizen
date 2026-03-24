@@ -84,10 +84,10 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
             ),
-            // Buff badges row
+            // Pill badges row
             ValueListenableBuilder<PlayerData>(
               valueListenable: playerNotifier,
-              builder: (_, player, _) => _buildBuffBadges(cs, player),
+              builder: (_, player, __) => _buildPillBadges(cs, player),
             ),
             // Character aura + HP bar
             Expanded(
@@ -302,35 +302,35 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ── Active Pill Badges ──────────────────────────────────
 
-  Widget _buildBuffBadges(ColorScheme cs, PlayerData player) {
-    final activeBuffEntries = player.activePills.entries
+  Widget _buildPillBadges(ColorScheme cs, PlayerData player) {
+    final activePillEntries = player.activePills.entries
         .where((e) => player.isPillActive(e.key))
         .toList();
 
-    if (activeBuffEntries.isEmpty) return const SizedBox(height: 6);
+    if (activePillEntries.isEmpty) return const SizedBox(height: 6);
 
     return Padding(
       padding: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 0),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: activeBuffEntries.map((e) {
-            final expiry = _buffExpiry(e.key, e.value);
-            return _buildBuffPill(cs, e.key, expiry);
+          children: activePillEntries.map((e) {
+            final expiry = _pillExpiry(e.key, e.value);
+            return _buildPillBadge(cs, e.key, expiry);
           }).toList(),
         ),
       ),
     );
   }
 
-  String _buffExpiry(String name, String value) {
+  String _pillExpiry(String name, String value) {
     try {
       final iso = value.startsWith('next_quest')
           ? value.split('|').last
           : value;
       final expires = DateTime.parse(iso);
       final diff = expires.difference(DateTime.now());
-      if (name == 'XP Surge') return 'next trial';
+      if (name == 'Qi Surge Pill') return 'next trial';
       if (diff.inHours >= 1) return '${diff.inHours}h${diff.inMinutes.remainder(60)}m';
       return '${diff.inMinutes}m';
     } catch (_) {
@@ -338,13 +338,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Widget _buildBuffPill(ColorScheme cs, String name, String timeLabel) {
-    // Terminology mapping for buffs
-    String displayName = name;
-    if (name == 'Focus Boost') displayName = 'Focus Elixir';
-    if (name == 'Double Rep') displayName = 'Spirit Tonic';
-    if (name == 'XP Surge') displayName = 'Qi Surge Pill';
-
+  Widget _buildPillBadge(ColorScheme cs, String name, String timeLabel) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -359,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen>
           Icon(Icons.bolt, color: cs.tertiary, size: 12),
           const SizedBox(width: 4),
           Text(
-            displayName,
+            name,
             style: TextStyle(
               color: cs.tertiary,
               fontSize: 10,

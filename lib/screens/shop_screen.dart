@@ -132,14 +132,14 @@ const _arsenal = [
 
 const _consumables = [
   _ConsumableItem(
-    name: 'Focus Boost',
+    name: 'Focus Elixir',
     icon: Icons.psychology,
     effect: '+50% Qi from all trials',
     duration: '2 hours',
     cost: 100,
   ),
   _ConsumableItem(
-    name: 'Double Rep',
+    name: 'Spirit Stone Tonic',
     icon: Icons.stars,
     effect: '+100% Spirit Stones earned',
     duration: '1 hour',
@@ -153,14 +153,14 @@ const _consumables = [
     cost: 200,
   ),
   _ConsumableItem(
-    name: 'Health Potion',
+    name: 'Vitality Pill',
     icon: Icons.favorite_outline,
     effect: 'Restores 300 Vitality instantly',
     duration: 'Instant',
     cost: 100,
   ),
   _ConsumableItem(
-    name: 'Shield Charge',
+    name: 'Protective Talisman',
     icon: Icons.auto_awesome,
     effect: 'Adds 1 Protective Talisman (Dao Heart shield)',
     duration: 'Instant',
@@ -174,7 +174,7 @@ const _consumables = [
     cost: 175,
   ),
   _ConsumableItem(
-    name: 'XP Surge',
+    name: 'Qi Surge Pill',
     icon: Icons.arrow_upward,
     effect: 'Next trial gives double Qi',
     duration: '1 trial',
@@ -289,11 +289,11 @@ class _ShopScreenState extends State<ShopScreen> {
 
   static const _deferredConsumables = {'Durability Kit', 'Time Warp'};
 
-  Future<void> _handlePurchase(String itemName, int cost) async {
+  Future<void> _handlePurchase(String itemName, int cost, {bool consumable = false}) async {
     if (_purchasingItems.contains(itemName)) return;
     final player = playerNotifier.value;
-    // Guard: do not allow purchasing already-owned items
-    if (player.inventory.containsKey(itemName)) {
+    // Guard: do not allow purchasing already-owned non-consumable items
+    if (!consumable && player.inventory.containsKey(itemName)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$itemName is already in your arsenal!')),
@@ -624,16 +624,6 @@ class _ShopScreenState extends State<ShopScreen> {
             final isDeferred = _deferredConsumables.contains(item.name);
             final isActive = player.isPillActive(item.name);
 
-            // Item Name mapping
-            String displayName = item.name;
-            if (item.name == 'Focus Boost') displayName = 'Focus Elixir';
-            if (item.name == 'Double Rep') displayName = 'Spirit Tonic';
-            if (item.name == 'XP Surge') displayName = 'Qi Surge Pill';
-            if (item.name == 'Health Potion') displayName = 'Healing Pill';
-            if (item.name == 'Shield Charge') displayName = 'Protective Talisman';
-            if (item.name == 'Durability Kit') displayName = 'Refinement Kit';
-            if (item.name == 'Time Warp') displayName = 'Fate Reversal Talisman';
-
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),
@@ -692,7 +682,7 @@ class _ShopScreenState extends State<ShopScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          displayName,
+                          item.name,
                           style: TextStyle(
                             color: cs.onSurface,
                             fontSize: 13,
@@ -739,7 +729,7 @@ class _ShopScreenState extends State<ShopScreen> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      // Hide BUY when buff is active — no point buying more mid-buff
+                      // Hide BUY when pill is active — no point buying more mid-pill
                       if (!isActive)
                         _consumableBuyButton(cs, item.name, item.cost, player),
                       // ACTIVE badge — shown even when inventory is 0
@@ -832,7 +822,7 @@ class _ShopScreenState extends State<ShopScreen> {
   ) {
     final canAfford = player.spiritStones >= cost;
     return GestureDetector(
-      onTap: canAfford ? () => _handlePurchase(itemName, cost) : null,
+      onTap: canAfford ? () => _handlePurchase(itemName, cost, consumable: true) : null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(

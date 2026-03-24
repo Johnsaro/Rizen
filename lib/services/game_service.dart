@@ -382,13 +382,6 @@ class GameService {
 
     try {
       final prevPlayer = playerNotifier.value;
-
-      // Ownership guard — prevent duplicate purchase of the same item
-      if (prevPlayer.inventory.containsKey(itemName) &&
-          (prevPlayer.inventory[itemName] ?? 0) > 0) {
-        return;
-      }
-
       var updatedPlayer = prevPlayer.buyItem(itemName, cost);
       final newAchievements = <String>[];
       updatedPlayer = _checkAndUnlockAchievements(updatedPlayer, newUnlocks: newAchievements);
@@ -422,27 +415,27 @@ class GameService {
       PlayerData updatedPlayer;
 
       switch (itemName) {
-        case 'Health Potion':
+        case 'Vitality Pill':
           if (prevPlayer.maxHp <= 0) return 'Cannot use — max HP is invalid';
           if (prevPlayer.hp >= prevPlayer.maxHp) return 'HP is already full';
           final newHp = (prevPlayer.hp + 300).clamp(0, prevPlayer.maxHp);
           updatedPlayer = prevPlayer.useInstantItem(itemName).copyWith(hp: newHp);
 
-        case 'Shield Charge':
+        case 'Protective Talisman':
           if (prevPlayer.talismans >= 3) return 'Talismans already at max (3)';
           updatedPlayer = prevPlayer.useInstantItem(itemName)
               .copyWith(talismans: (prevPlayer.talismans + 1).clamp(0, 3));
 
-        case 'Focus Boost':
-          if (prevPlayer.isPillActive('Focus Boost')) return 'Focus Boost is already active';
-          updatedPlayer = prevPlayer.activatePill('Focus Boost', itemName, const Duration(hours: 2));
+        case 'Focus Elixir':
+          if (prevPlayer.isPillActive('Focus Elixir')) return 'Focus Elixir is already active';
+          updatedPlayer = prevPlayer.activatePill('Focus Elixir', itemName, const Duration(hours: 2));
 
-        case 'Double Rep':
-          if (prevPlayer.isPillActive('Double Rep')) return 'Double Rep is already active';
-          updatedPlayer = prevPlayer.activatePill('Double Rep', itemName, const Duration(hours: 1));
+        case 'Spirit Stone Tonic':
+          if (prevPlayer.isPillActive('Spirit Stone Tonic')) return 'Spirit Stone Tonic is already active';
+          updatedPlayer = prevPlayer.activatePill('Spirit Stone Tonic', itemName, const Duration(hours: 1));
 
-        case 'XP Surge':
-          if (prevPlayer.isPillActive('XP Surge')) return 'XP Surge is already active';
+        case 'Qi Surge Pill':
+          if (prevPlayer.isPillActive('Qi Surge Pill')) return 'Qi Surge Pill is already active';
           updatedPlayer = prevPlayer.activateQiSurge();
 
         case 'Durability Kit':
@@ -882,7 +875,7 @@ class GameService {
   // ── Private helpers ──────────────────────────────────────
 
   /// Centralises Qi + Spirit Stone arithmetic so all reward paths use the same logic.
-  /// Applies active pill multipliers (Focus Boost, Qi Surge, Double Rep).
+  /// Applies active pill multipliers (Focus Elixir, Qi Surge Pill, Spirit Stone Tonic).
   /// Set [isQuestReward] to true when called from quest completion or combat
   /// victory — only those paths apply the Qi Surge multiplier.
   ///
@@ -899,13 +892,13 @@ class GameService {
     double qiMultiplier = 1.0;
     double stoneMultiplier = 1.0;
 
-    if (player.isPillActive('Focus Boost')) {
+    if (player.isPillActive('Focus Elixir')) {
       qiMultiplier += 0.5;
     }
-    if (player.isPillActive('XP Surge') && isQuestReward) {
+    if (player.isPillActive('Qi Surge Pill') && isQuestReward) {
       qiMultiplier += 1.0;
     }
-    if (player.isPillActive('Double Rep')) {
+    if (player.isPillActive('Spirit Stone Tonic')) {
       stoneMultiplier += 1.0;
     }
 

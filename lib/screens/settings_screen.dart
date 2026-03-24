@@ -342,10 +342,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return GestureDetector(
       onTap: () async {
         final prev = playerNotifier.value;
-        await gameService.updatePlayer(prev.copyWith(spiritStones: prev.spiritStones + 2000));
+        final updated = prev.copyWith(spiritStones: prev.spiritStones + 2000);
+        // Set notifier directly so UI reflects immediately regardless of Supabase
+        playerNotifier.value = updated;
+        try {
+          await gameService.updatePlayer(updated);
+        } catch (_) {
+          // Best-effort persist — debug mode doesn't need Supabase to work
+        }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('[DEBUG] +2000 Stones added')),
+            SnackBar(content: Text('[DEBUG] +2000 Stones added (${updated.spiritStones} total)')),
           );
         }
       },
