@@ -8,6 +8,7 @@ import 'screens/auth_screen.dart';
 import 'screens/maintenance_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/update_required_screen.dart';
+import 'services/guest_session.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
 import 'app_state.dart';
@@ -45,18 +46,32 @@ void main() async {
   final bool showUpdateNudge =
       compareVersions(appVersion, config.latestVersion) < 0;
 
-  final session = Supabase.instance.client.auth.currentSession;
-  if (session != null) {
+  // Restore guest session if one was active
+  await GuestSession.init();
+
+  if (GuestSession.isActive) {
     try {
-      // Refresh the JWT if it has expired — stale tokens cause 401 on all API calls
-      await Supabase.instance.client.auth.refreshSession();
       await gameService.loadAll();
-      home = playerNotifier.value.name.isEmpty
-          ? const OnboardingScreen()
-          : const MainShell();
+      home = const MainShell();
     } catch (e) {
-      debugPrint('Startup load error: $e');
+      debugPrint('Guest startup error: $e');
+      await GuestSession.clear();
       home = const AuthScreen();
+    }
+  } else {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session != null) {
+      try {
+        // Refresh the JWT if it has expired — stale tokens cause 401 on all API calls
+        await Supabase.instance.client.auth.refreshSession();
+        await gameService.loadAll();
+        home = playerNotifier.value.name.isEmpty
+            ? const OnboardingScreen()
+            : const MainShell();
+      } catch (e) {
+        debugPrint('Startup load error: $e');
+        home = const AuthScreen();
+      }
     }
   }
 

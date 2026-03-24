@@ -5,6 +5,9 @@ import '../models/quest.dart';
 import '../models/game_notification.dart';
 import '../models/achievement.dart';
 import '../models/personal_record.dart';
+import 'guest_session.dart';
+import 'local_storage_service.dart';
+import 'storage_router.dart';
 import 'supabase_service.dart';
 
 /// Central game state manager. All mutations to playerNotifier, questNotifier,
@@ -39,6 +42,7 @@ class GameService {
   });
 
   String get _userId {
+    if (GuestSession.isActive) return GuestSession.userId;
     try {
       return Supabase.instance.client.auth.currentUser?.id ?? '';
     } catch (_) {
@@ -56,13 +60,14 @@ class GameService {
       final now = DateTime.now();
       final today = now.toIso8601String().substring(0, 10);
 
-      var result = await SupabaseService.loadProfile(_userId);
+      var result = await StorageRouter.loadProfile(_userId);
 
       debugPrint('[GameService] loadProfile result for $_userId: ${result != null ? "found" : "null"}');
 
       // Web-registered users have auth metadata (full_name, class) but no
       // profile row yet. Auto-create their profile so they skip GM onboarding.
-      if (result == null) {
+      // Skip for guests — they get a default local profile, not a Supabase row.
+      if (result == null && !GuestSession.isActive) {
         final meta =
             Supabase.instance.client.auth.currentUser?.userMetadata ?? {};
         final webName = (meta['full_name'] as String?)?.trim() ?? '';
@@ -130,7 +135,7 @@ class GameService {
                 final penalized = player.copyWith(daoHeartStreak: streak, talismans: talismans);
                 // Only commit penalty if Supabase write succeeds — prevents double-deduction on crash
                 try {
-                  await SupabaseService.saveProfile(_userId, penalized);
+                  await StorageRouter.saveProfile(_userId, penalized);
                   player = penalized;
                   _createNotification(
                     '"Your streak has broken. The foundation cracks. Begin again — stronger."',
@@ -158,7 +163,7 @@ class GameService {
         if (!identical(cleaned, player)) {
           player = cleaned;
           try {
-            await SupabaseService.saveProfile(_userId, player);
+            await StorageRouter.saveProfile(_userId, player);
           } catch (e) {
             debugPrint('Failed to persist cleaned pills: $e');
           }
@@ -169,7 +174,7 @@ class GameService {
       // Weapon durability idle decay
       await applyDurabilityDecay();
 
-      final quests = await SupabaseService.loadQuests(_userId);
+      final quests = await StorageRouter.loadQuests(_userId);
       if (quests.isNotEmpty) {
         questNotifier.value = quests;
       } else {
@@ -180,13 +185,13 @@ class GameService {
       // Quest expiry check
       await _checkExpiredQuests(today);
 
-      final guildBoard = await SupabaseService.loadGuildBoard(_userId, today);
+      final guildBoard = await StorageRouter.loadGuildBoard(_userId, today);
       guildBoardNotifier.value = guildBoard;
 
-      final notifications = await SupabaseService.loadNotifications(_userId);
+      final notifications = await StorageRouter.loadNotifications(_userId);
       notificationsNotifier.value = notifications;
 
-      final prs = await SupabaseService.loadPersonalRecords(_userId);
+      final prs = await StorageRouter.loadPersonalRecords(_userId);
       prNotifier.value = prs;
     } catch (e) {
       errorNotifier.value = 'Failed to load data. Check your connection.';
@@ -240,8 +245,8 @@ class GameService {
 
       try {
         // Save quests first — if this fails, profile (with consumed surge) is never written
-        await SupabaseService.saveQuests(_userId, updatedQuests);
-        await SupabaseService.saveProfile(_userId, updatedPlayer);
+        await StorageRouter.saveQuests(_userId, updatedQuests);
+        await StorageRouter.saveProfile(_userId, updatedPlayer);
 
         // Notifications — fire-and-forget, do not affect rollback
         _createNotification(
@@ -286,7 +291,7 @@ class GameService {
     questNotifier.value = updatedQuests;
 
     try {
-      await SupabaseService.saveQuests(_userId, updatedQuests);
+      await StorageRouter.saveQuests(_userId, updatedQuests);
     } catch (e) {
       questNotifier.value = prevQuests;
       errorNotifier.value = 'Failed to accept quest. Try again.';
@@ -307,7 +312,7 @@ class GameService {
 
     try {
       final today = DateTime.now().toIso8601String().substring(0, 10);
-      await SupabaseService.saveGuildBoard(_userId, updatedBoard, today);
+      await StorageRouter.saveGuildBoard(_userId, updatedBoard, today);
     } catch (e) {
       guildBoardNotifier.value = prevBoard;
       errorNotifier.value = 'Failed to save guild board. Try again.';
@@ -345,7 +350,7 @@ class GameService {
     checkedInNotifier.value = true;
 
     try {
-      await SupabaseService.saveProfile(_userId, updatedPlayer, checkinDate: today);
+      await StorageRouter.saveProfile(_userId, updatedPlayer, checkinDate: today);
 
       // Notifications — fire-and-forget
       _createNotification(
@@ -373,6 +378,23 @@ class GameService {
     }
   }
 
+  // ── Merchant's Log Qi reward ─────────────────────────────
+
+  /// Awards a small Qi reward for logging an expense in the Merchant's Log.
+  /// Intentionally tiny (10 Qi, 0 stones) — encourages tracking without gaming.
+  Future<void> awardMerchantLogQi() async {
+    if (!_hasSession) return;
+    final prev = playerNotifier.value;
+    final updated = _awardQiAndStones(prev, 10, 0);
+    playerNotifier.value = updated;
+    try {
+      await StorageRouter.saveProfile(_userId, updated);
+    } catch (e) {
+      playerNotifier.value = prev;
+      errorNotifier.value = 'Failed to save Qi reward.';
+    }
+  }
+
   // ── Shop purchase ────────────────────────────────────────
 
   Future<void> purchaseItem(String itemName, int cost) async {
@@ -388,7 +410,7 @@ class GameService {
       playerNotifier.value = updatedPlayer;
 
       try {
-        await SupabaseService.saveProfile(_userId, updatedPlayer);
+        await StorageRouter.saveProfile(_userId, updatedPlayer);
         _notifyAchievements(newAchievements);
       } catch (e) {
         playerNotifier.value = prevPlayer;
@@ -449,7 +471,7 @@ class GameService {
       playerNotifier.value = updatedPlayer;
 
       try {
-        await SupabaseService.saveProfile(_userId, updatedPlayer);
+        await StorageRouter.saveProfile(_userId, updatedPlayer);
         _createNotification(
           '"$itemName activated. Use it wisely."',
           NotificationType.info,
@@ -478,7 +500,7 @@ class GameService {
     playerNotifier.value = updated;
 
     try {
-      await SupabaseService.saveProfile(
+      await StorageRouter.saveProfile(
         _userId,
         updated,
         checkinDate: checkinDate,
@@ -502,7 +524,7 @@ class GameService {
     playerNotifier.value = updatedPlayer;
 
     try {
-      await SupabaseService.saveProfile(_userId, updatedPlayer);
+      await StorageRouter.saveProfile(_userId, updatedPlayer);
     } catch (e) {
       playerNotifier.value = prevPlayer;
       errorNotifier.value = 'Failed to save loadout. Try again.';
@@ -535,7 +557,7 @@ class GameService {
     playerNotifier.value = updatedPlayer;
 
     try {
-      await SupabaseService.saveProfile(_userId, updatedPlayer);
+      await StorageRouter.saveProfile(_userId, updatedPlayer);
     } catch (e) {
       playerNotifier.value = prevPlayer;
       errorNotifier.value = 'Failed to equip cosmetic. Try again.';
@@ -565,7 +587,7 @@ class GameService {
     playerNotifier.value = updatedPlayer;
 
     try {
-      await SupabaseService.saveProfile(_userId, updatedPlayer);
+      await StorageRouter.saveProfile(_userId, updatedPlayer);
       if (xpReward > 0) {
         _createNotification(
           '"Monster defeated. +$xpReward XP claimed. HP restored."',
@@ -594,7 +616,7 @@ class GameService {
     playerNotifier.value = updatedPlayer;
 
     try {
-      await SupabaseService.saveProfile(_userId, updatedPlayer);
+      await StorageRouter.saveProfile(_userId, updatedPlayer);
       _createNotification(
         '"You fled the battle. Cowardice costs you. -$xpPenalty XP."',
         NotificationType.info,
@@ -615,7 +637,7 @@ class GameService {
     playerNotifier.value = updatedPlayer;
 
     try {
-      await SupabaseService.saveProfile(_userId, updatedPlayer);
+      await StorageRouter.saveProfile(_userId, updatedPlayer);
       _createNotification(
         '"You have been defeated. -$xpLoss XP lost. The guild awaits your return."',
         NotificationType.streakBreak,
@@ -686,7 +708,7 @@ class GameService {
       final updated = player.copyWith(weaponDurability: newDurability);
       playerNotifier.value = updated;
       try {
-        await SupabaseService.saveProfile(_userId, updated);
+        await StorageRouter.saveProfile(_userId, updated);
       } catch (e) {
         debugPrint('Failed to persist durability decay: $e');
       }
@@ -709,7 +731,7 @@ class GameService {
     playerNotifier.value = updated;
 
     try {
-      await SupabaseService.saveProfile(_userId, updated);
+      await StorageRouter.saveProfile(_userId, updated);
       _createNotification(
         '"$weaponName has been restored to full refinement."',
         NotificationType.info,
@@ -736,7 +758,7 @@ class GameService {
     playerNotifier.value = updated;
 
     try {
-      await SupabaseService.saveProfile(_userId, updated);
+      await StorageRouter.saveProfile(_userId, updated);
     } catch (e) {
       playerNotifier.value = prevPlayer;
       debugPrint('Failed to persist durability loss: $e');
@@ -774,8 +796,8 @@ class GameService {
     }
 
     try {
-      await SupabaseService.saveQuests(_userId, updatedQuests);
-      await SupabaseService.saveProfile(_userId, updatedPlayer);
+      await StorageRouter.saveQuests(_userId, updatedQuests);
+      await StorageRouter.saveProfile(_userId, updatedPlayer);
       questNotifier.value = updatedQuests;
       playerNotifier.value = updatedPlayer;
       for (final quest in expired) {
@@ -812,7 +834,7 @@ class GameService {
     final prev = notificationsNotifier.value;
     notificationsNotifier.value = [];
     try {
-      await SupabaseService.clearNotifications(_userId);
+      await StorageRouter.clearNotifications(_userId);
     } catch (e) {
       notificationsNotifier.value = prev;
       errorNotifier.value = 'Failed to clear notifications. Try again.';
@@ -849,7 +871,7 @@ class GameService {
     }
 
     try {
-      final record = await SupabaseService.addPersonalRecord(
+      final record = await StorageRouter.addPersonalRecord(
         _userId,
         title: title,
         category: category,
@@ -868,6 +890,75 @@ class GameService {
       return true;
     } catch (e) {
       errorNotifier.value = 'Failed to log PR. Check your connection.';
+      return false;
+    }
+  }
+
+  // ── Guest-to-account migration ──────────────────────────
+
+  /// Transfers all local guest data to Supabase under the newly authenticated
+  /// userId, then clears the guest session. Call AFTER successful sign-up.
+  Future<bool> migrateGuestToAccount() async {
+    final authId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    if (authId.isEmpty) return false;
+
+    try {
+      final guestId = GuestSession.userId;
+
+      // Read all local data
+      final profile = await LocalStorageService.loadProfile(guestId);
+      final quests = await LocalStorageService.loadQuests(guestId);
+      final guildBoard = await LocalStorageService.loadGuildBoard(
+        guestId,
+        DateTime.now().toIso8601String().substring(0, 10),
+      );
+      final notifications = await LocalStorageService.loadNotifications(guestId);
+      final prs = await LocalStorageService.loadPersonalRecords(guestId);
+
+      // Write to Supabase under the real auth ID
+      if (profile != null) {
+        await SupabaseService.saveProfile(
+          authId,
+          profile.player,
+          checkinDate: profile.checkedInDate.isNotEmpty ? profile.checkedInDate : null,
+          onboardingComplete: true,
+          originPlatform: 'flutter',
+        );
+      }
+      if (quests.isNotEmpty) {
+        await SupabaseService.saveQuests(authId, quests);
+      }
+      if (guildBoard.isNotEmpty) {
+        final today = DateTime.now().toIso8601String().substring(0, 10);
+        await SupabaseService.saveGuildBoard(authId, guildBoard, today);
+      }
+      for (final notif in notifications) {
+        await SupabaseService.addNotification(authId, notif.message, notif.type);
+      }
+      for (final pr in prs) {
+        await SupabaseService.addPersonalRecord(
+          authId,
+          title: pr.title,
+          category: pr.category.value,
+          description: pr.description,
+          mood: pr.mood,
+          metricType: pr.metricType,
+          metricValue: pr.metricValue,
+          tags: pr.tags,
+          streakContext: pr.streakContext,
+        );
+      }
+
+      // Clear guest state
+      await GuestSession.clear();
+
+      // Reload everything from Supabase
+      await loadAll();
+
+      return true;
+    } catch (e) {
+      debugPrint('Guest migration failed: $e');
+      errorNotifier.value = 'Migration failed. Your local data is still safe.';
       return false;
     }
   }
@@ -922,7 +1013,7 @@ class GameService {
     );
     notificationsNotifier.value = [notif, ...notificationsNotifier.value];
 
-    SupabaseService.addNotification(_userId, message, type).catchError((_) {
+    StorageRouter.addNotification(_userId, message, type).catchError((_) {
       // Non-fatal — notification dropped silently
     });
   }

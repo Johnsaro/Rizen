@@ -6,6 +6,7 @@ import '../services/guild_master_service.dart';
 import '../theme/night_guild_background.dart';
 import '../theme/rank_colors.dart';
 import '../theme/rizen_colors.dart';
+import '../widgets/nag_prompt.dart';
 
 // ── Message model ─────────────────────────────────────────
 
@@ -160,6 +161,7 @@ class _GuildMasterScreenState extends State<GuildMasterScreen> {
         await gameService.completeQuest(validatedQuest!);
         if (mounted) {
           final wasCompleted = !questNotifier.value.any((q) => q.id == validatedQuest!.id);
+          if (wasCompleted) NagPrompt.maybeShow(context);
           setState(() {
             _messages.add(
               _ChatMessage(
@@ -672,6 +674,7 @@ class _GuildMasterScreenState extends State<GuildMasterScreen> {
       await gameService.completeQuest(quest);
       if (!mounted) return;
       final wasCompleted = !questNotifier.value.any((q) => q.id == quest.id);
+      if (wasCompleted) NagPrompt.maybeShow(context);
       setState(() {
         _isThinking = false;
         _messages.add(

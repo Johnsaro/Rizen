@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
 import '../app_state.dart';
 import '../models/player_data.dart';
+import '../services/guest_session.dart';
 import '../theme/night_guild_background.dart';
 import 'auth_screen.dart';
 import 'combat/combat_screen.dart';
@@ -45,6 +46,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 12),
                     _buildComingSoon(cs),
                     const SizedBox(height: 40),
+                    if (GuestSession.isActive) _buildGuestInfo(cs),
+                    if (GuestSession.isActive) const SizedBox(height: 12),
                     _buildSignOut(cs),
                     const SizedBox(height: 32),
                     _sectionLabel('SYSTEM DEBUG', cs),
@@ -231,6 +234,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _resetNotifiers() {
+    playerNotifier.value = PlayerData.empty;
+    questNotifier.value = [];
+    guildBoardNotifier.value = [];
+    checkedInNotifier.value = false;
+    notificationsNotifier.value = [];
+    prNotifier.value = [];
+  }
+
+  void _navigateToAuth({bool migrateFromGuest = false}) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AuthScreen(migrateFromGuest: migrateFromGuest),
+      ),
+      (route) => false,
+    );
+  }
+
   Future<void> _signOut() async {
     try {
       await Supabase.instance.client.auth.signOut();
@@ -242,20 +264,128 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       return;
     }
-    playerNotifier.value = PlayerData.empty;
-    questNotifier.value = [];
-    guildBoardNotifier.value = [];
-    checkedInNotifier.value = false;
-    notificationsNotifier.value = [];
+    _resetNotifiers();
     if (!mounted) return;
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const AuthScreen()),
-      (route) => false,
+    _navigateToAuth();
+  }
+
+  Future<void> _clearGuestData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final dcs = Theme.of(ctx).colorScheme;
+        return AlertDialog(
+          backgroundColor: dcs.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: dcs.outline),
+          ),
+          title: Text(
+            'Clear Guest Data?',
+            style: TextStyle(color: dcs.onSurface, fontSize: 16),
+          ),
+          content: Text(
+            'All local progress will be permanently deleted. This cannot be undone.',
+            style: TextStyle(
+              color: dcs.onSurface.withValues(alpha: 0.7),
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('CANCEL'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('DELETE', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+    await GuestSession.clear();
+    _resetNotifiers();
+    if (!mounted) return;
+    _navigateToAuth();
+  }
+
+  Widget _buildGuestInfo(ColorScheme cs) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        'Guest data is stored locally and will be lost on uninstall. '
+        'Create an account to secure your progress.',
+        style: TextStyle(
+          color: cs.onSurface.withValues(alpha: 0.5),
+          fontSize: 12,
+          height: 1.4,
+        ),
+      ),
     );
   }
 
   Widget _buildSignOut(ColorScheme cs) {
+    if (GuestSession.isActive) {
+      return Column(
+        children: [
+          GestureDetector(
+            onTap: () => _navigateToAuth(migrateFromGuest: true),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: cs.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'CREATE ACCOUNT',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: _clearGuestData,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: const Text(
+                'CLEAR GUEST DATA',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return GestureDetector(
       onTap: _signOut,
       child: Container(

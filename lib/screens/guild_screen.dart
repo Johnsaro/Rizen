@@ -9,6 +9,7 @@ import 'guild_master_screen.dart';
 import 'library/library_screen.dart';
 import 'personal_records_screen.dart';
 import '../widgets/check_in_overlay.dart';
+import '../widgets/nag_prompt.dart';
 import '../theme/night_guild_background.dart';
 
 class GuildScreen extends StatefulWidget {
@@ -67,6 +68,7 @@ class _GuildScreenState extends State<GuildScreen> {
             onComplete: () => Navigator.of(ctx).pop(),
           ),
         );
+        NagPrompt.maybeShow(context);
       }
     } finally {
       if (mounted) setState(() => _isCheckingIn = false);

@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
 import '../main_shell.dart';
+import '../models/player_data.dart';
+import '../services/guest_session.dart';
+import '../services/local_storage_service.dart';
 import '../theme/night_guild_background.dart';
 import 'onboarding_screen.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  final bool migrateFromGuest;
+  const AuthScreen({super.key, this.migrateFromGuest = false});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -48,7 +52,11 @@ class _AuthScreenState extends State<AuthScreen> {
           password: password,
         );
 
-        await gameService.loadAll();
+        if (widget.migrateFromGuest) {
+          await gameService.migrateGuestToAccount();
+        } else {
+          await gameService.loadAll();
+        }
 
         if (!mounted) return;
         final dest = playerNotifier.value.name.isEmpty
@@ -66,16 +74,69 @@ class _AuthScreenState extends State<AuthScreen> {
           data: {'origin_platform': 'flutter'},
         );
 
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        );
+        if (widget.migrateFromGuest) {
+          await gameService.migrateGuestToAccount();
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainShell()),
+          );
+        } else {
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          );
+        }
       }
     } on AuthException catch (e) {
       setState(() => _errorMsg = e.message);
     } catch (_) {
       setState(() => _errorMsg = 'Something went wrong. Try again.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _enterAsGuest() async {
+    setState(() {
+      _isLoading = true;
+      _errorMsg = null;
+    });
+
+    try {
+      await GuestSession.start();
+
+      // Create default guest player and save locally
+      final wanderer = PlayerData(
+        name: 'Wanderer',
+        mainPath: 'Shadow Arts',
+        sidePath: 'Shadow Arts',
+        sect: 'Unaffiliated',
+        level: 1,
+        qi: 0,
+        spiritStones: 50,
+        hp: 100,
+        maxHp: 100,
+      );
+
+      await LocalStorageService.saveProfile(
+        GuestSession.userId,
+        wanderer,
+        onboardingComplete: true,
+      );
+
+      // Load through GameService so all notifiers are populated
+      await gameService.loadAll();
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainShell()),
+      );
+    } catch (_) {
+      await GuestSession.clear();
+      setState(() => _errorMsg = 'Failed to start guest session. Try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -104,6 +165,10 @@ class _AuthScreenState extends State<AuthScreen> {
               _buildSubmitButton(cs),
               const SizedBox(height: 20),
               _buildToggle(cs),
+              if (!widget.migrateFromGuest) ...[
+                const SizedBox(height: 28),
+                _buildWandererButton(cs),
+              ],
             ],
           ),
         ),
@@ -303,6 +368,35 @@ class _AuthScreenState extends State<AuthScreen> {
             color: cs.secondary,
             fontSize: 13,
             fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWandererButton(ColorScheme cs) {
+    return Center(
+      child: GestureDetector(
+        onTap: _isLoading ? null : _enterAsGuest,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: cs.onSurface.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Text(
+            'CONTINUE AS WANDERER',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: cs.onSurface.withValues(alpha: 0.5),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
+            ),
           ),
         ),
       ),

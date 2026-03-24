@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../models/quest.dart';
 import '../theme/rank_colors.dart' as rc;
 import '../widgets/floating_xp.dart';
+import '../widgets/nag_prompt.dart';
 
 class QuestsScreen extends StatefulWidget {
   const QuestsScreen({super.key});
@@ -38,6 +39,7 @@ class _QuestsScreenState extends State<QuestsScreen> {
       // Persisted: show reward animation.
       final repGain = (quest.xpReward * 0.1).round();
       showFloatingText(context, '+${quest.xpReward} QI  +$repGain STONES');
+      NagPrompt.maybeShow(context);
     } else {
       // Failed: restore button so the user can retry.
       setState(() => _completingIds.remove(quest.id));
