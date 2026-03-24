@@ -2,12 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../app_state.dart';
-import '../models/player_data.dart';
+import '../models/player_data.dart' show PlayerData, CultivationRealms;
 import '../models/game_notification.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
 import 'notifications_screen.dart';
 import 'inventory_screen.dart';
+import 'merchant_log/merchant_log_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -152,6 +153,15 @@ class _HomeScreenState extends State<HomeScreen>
               GestureDetector(
                 onTap: () => Navigator.push(
                   context,
+                  MaterialPageRoute(builder: (_) => const MerchantLogScreen()),
+                ),
+                child: Icon(Icons.account_balance_wallet_outlined,
+                    color: cs.onSurface, size: 24),
+              ),
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
                   MaterialPageRoute(
                       builder: (_) => const NotificationsScreen()),
                 ),
@@ -215,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen>
                       color: cs.primary.withValues(alpha: 0.5), width: 1),
                 ),
                 child: Text(
-                  'Realm Lv. ${player.level}',
+                  CultivationRealms.shortDisplayFor(player.level),
                   style: GoogleFonts.jetBrainsMono(
                     color: cs.secondary,
                     fontSize: 13,
@@ -232,6 +242,15 @@ class _HomeScreenState extends State<HomeScreen>
               color: cs.brightness == Brightness.dark ? cs.primary : cs.onSurface,
               fontSize: 13,
               fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${CultivationRealms.subStageFor(CultivationRealms.rankFor(player.level))} Stage',
+            style: GoogleFonts.jetBrainsMono(
+              color: cs.onSurface.withValues(alpha: 0.35),
+              fontSize: 10,
+              letterSpacing: 0.5,
             ),
           ),
         ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
-import '../models/player_data.dart';
+import '../models/player_data.dart' show PlayerData, CultivationRealms;
 import '../models/achievement.dart';
 import '../theme/night_guild_background.dart';
 import 'settings_screen.dart';
@@ -220,10 +220,19 @@ class ProfileScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _chip('Lv. $level', cs),
+              _chip(CultivationRealms.shortDisplayFor(level), cs),
               const SizedBox(width: 8),
               _chip(mainClass, cs),
             ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${CultivationRealms.subStageFor(CultivationRealms.rankFor(level))} Stage',
+            style: TextStyle(
+              color: cs.onSurface.withValues(alpha: 0.4),
+              fontSize: 10,
+              letterSpacing: 0.5,
+            ),
           ),
         ],
       ),

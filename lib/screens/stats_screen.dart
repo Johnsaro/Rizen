@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../app_state.dart';
-import '../models/player_data.dart';
+import '../models/player_data.dart' show PlayerData, CultivationRealms;
 import '../theme/night_guild_background.dart';
 import '../widgets/radar_chart.dart';
 
@@ -208,10 +208,10 @@ class StatsScreen extends StatelessWidget {
                         border: Border.all(color: cs.primary.withValues(alpha: 0.5)),
                       ),
                       child: Text(
-                        'REALM LV ${player.level}',
+                        CultivationRealms.shortDisplayFor(player.level),
                         style: GoogleFonts.cinzel(
                           color: cs.primary,
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -225,6 +225,14 @@ class StatsScreen extends StatelessWidget {
                     color: cs.secondary,
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${CultivationRealms.nameFor(player.level)} — ${CultivationRealms.subStageFor(CultivationRealms.rankFor(player.level))} Stage',
+                  style: GoogleFonts.jetBrainsMono(
+                    color: cs.onSurface.withValues(alpha: 0.4),
+                    fontSize: 10,
                   ),
                 ),
                 const SizedBox(height: 12),

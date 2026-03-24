@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../app_state.dart';
-import '../models/player_data.dart';
+import '../models/player_data.dart' show PlayerData, CultivationRealms;
 import '../theme/night_guild_background.dart';
 
 class PersonalRecordsScreen extends StatelessWidget {
@@ -188,7 +188,7 @@ class PersonalRecordsScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _overviewRow(cs, 'Realm Level', 'Lv ${player.level}'),
+          _overviewRow(cs, 'Cultivation', CultivationRealms.shortDisplayFor(player.level)),
           const SizedBox(height: 10),
           _overviewRow(cs, _displayPathName(player.mainPath), 'Lv $mainLv', badge: 'PRIMARY'),
           const SizedBox(height: 10),

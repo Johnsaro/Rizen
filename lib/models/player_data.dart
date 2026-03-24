@@ -1,3 +1,61 @@
+/// Cultivation realm definitions derived from player level.
+/// Each realm spans a level range; within that range, ranks 1–9 are distributed.
+class CultivationRealms {
+  CultivationRealms._();
+
+  static const List<({String name, int minLevel, int maxLevel, String breakthrough})> _realms = [
+    (name: 'Mortal',                   minLevel: 1,  maxLevel: 5,  breakthrough: 'Qi detected. Binding initiated.'),
+    (name: 'Qi Gathering',             minLevel: 6,  maxLevel: 15, breakthrough: 'Your meridians stir. The Dao notices you.'),
+    (name: 'Foundation Establishment', minLevel: 16, maxLevel: 25, breakthrough: 'Foundation set. The heavens take note.'),
+    (name: 'Core Formation',           minLevel: 26, maxLevel: 35, breakthrough: 'A golden core crystallizes. You have surpassed the masses.'),
+    (name: 'Nascent Soul',             minLevel: 36, maxLevel: 45, breakthrough: 'Your soul stirs independently. Death itself hesitates.'),
+    (name: 'Dao Seeking',              minLevel: 46, maxLevel: 50, breakthrough: 'You glimpse the Dao. The System... acknowledges you.'),
+  ];
+
+  /// Returns the realm record for a given overall level.
+  static ({String name, int minLevel, int maxLevel, String breakthrough}) realmFor(int level) {
+    for (final r in _realms) {
+      if (level >= r.minLevel && level <= r.maxLevel) return r;
+    }
+    return _realms.last;
+  }
+
+  /// Computes the rank (1–9) within the realm for a given level.
+  static int rankFor(int level) {
+    final r = realmFor(level);
+    final span = r.maxLevel - r.minLevel;
+    if (span <= 0) return 9;
+    final position = level - r.minLevel; // 0-based
+    return ((position / span) * 8).round() + 1; // 1–9
+  }
+
+  /// "Early", "Middle", "Late", or "Peak" based on rank.
+  static String subStageFor(int rank) {
+    if (rank <= 3) return 'Early';
+    if (rank <= 6) return 'Middle';
+    if (rank <= 8) return 'Late';
+    return 'Peak';
+  }
+
+  /// Full display string, e.g. "Qi Gathering — Late Stage (Rank 8)"
+  static String displayFor(int level) {
+    final r = realmFor(level);
+    final rank = rankFor(level);
+    final sub = subStageFor(rank);
+    return '${r.name} — $sub Stage (Rank $rank)';
+  }
+
+  /// Short display, e.g. "Qi Gathering Lv 8"
+  static String shortDisplayFor(int level) {
+    final r = realmFor(level);
+    final rank = rankFor(level);
+    return '${r.name} Lv $rank';
+  }
+
+  /// Just the realm name, e.g. "Qi Gathering"
+  static String nameFor(int level) => realmFor(level).name;
+}
+
 class PlayerData {
   final String name;
   final int level;
@@ -199,7 +257,9 @@ class PlayerData {
       featuredAchievement: featuredAchievement, trialsCompleted: trialsCompleted,
       monstersKilled: monstersKilled, equippedCosmetics: equippedCosmetics,
       weaponDurability: weaponDurability, weaponLastUsed: weaponLastUsed,
-      equippedWeapons: equippedWeapons, realm: realm, realmRank: realmRank,
+      equippedWeapons: equippedWeapons,
+      realm: CultivationRealms.nameFor(lv),
+      realmRank: CultivationRealms.rankFor(lv),
       daoHeartState: daoHeartState,
     );
   }
