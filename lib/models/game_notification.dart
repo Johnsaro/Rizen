@@ -32,6 +32,7 @@ enum NotificationType {
   streakMilestone,
   streakBreak,
   achievement,
+  qiDeviation,
   info;
 
   static NotificationType fromString(String s) {
@@ -43,6 +44,7 @@ enum NotificationType {
       case 'streak_milestone': return NotificationType.streakMilestone;
       case 'streak_break':    return NotificationType.streakBreak;
       case 'achievement':     return NotificationType.achievement;
+      case 'qi_deviation':    return NotificationType.qiDeviation;
       default:                return NotificationType.info;
     }
   }
@@ -56,6 +58,7 @@ enum NotificationType {
       case NotificationType.streakMilestone: return 'streak_milestone';
       case NotificationType.streakBreak:     return 'streak_break';
       case NotificationType.achievement:    return 'achievement';
+      case NotificationType.qiDeviation:   return 'qi_deviation';
       case NotificationType.info:            return 'info';
     }
   }

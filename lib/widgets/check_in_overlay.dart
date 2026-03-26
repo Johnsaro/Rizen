@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/player_data.dart' show PlayerData;
 
 class CheckInOverlay extends StatefulWidget {
   final VoidCallback onComplete;
+  final String? prevDaoState;
+  final String? newDaoState;
+  final int qiAwarded;
+  final int stonesAwarded;
+  final int newStreak;
 
-  const CheckInOverlay({super.key, required this.onComplete});
+  const CheckInOverlay({
+    super.key,
+    required this.onComplete,
+    this.prevDaoState,
+    this.newDaoState,
+    this.qiAwarded = 50,
+    this.stonesAwarded = 5,
+    this.newStreak = 0,
+  });
 
   @override
   State<CheckInOverlay> createState() => _CheckInOverlayState();
@@ -15,6 +29,7 @@ class _CheckInOverlayState extends State<CheckInOverlay> with SingleTickerProvid
   late final Animation<double> _xpAnimation;
   late final Animation<double> _opacityAnimation;
   late final Animation<double> _scaleAnimation;
+  late final Animation<double> _transitionOpacity;
 
   @override
   void initState() {
@@ -32,8 +47,12 @@ class _CheckInOverlayState extends State<CheckInOverlay> with SingleTickerProvid
       CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.4, curve: Curves.easeOutBack)),
     );
 
-    _xpAnimation = Tween<double>(begin: 0, end: 50).animate(
+    _xpAnimation = Tween<double>(begin: 0, end: widget.qiAwarded.toDouble()).animate(
       CurvedAnimation(parent: _controller, curve: const Interval(0.4, 0.8, curve: Curves.easeOutCubic)),
+    );
+
+    _transitionOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.7, 0.95, curve: Curves.easeIn)),
     );
 
     _controller.forward().then((_) {
@@ -145,7 +164,7 @@ class _CheckInOverlayState extends State<CheckInOverlay> with SingleTickerProvid
                           Container(width: 1, height: 24, color: cs.primary.withValues(alpha: 0.3)),
                           const SizedBox(width: 16),
                           Text(
-                            '+5 STONES',
+                            '+${widget.stonesAwarded} STONES',
                             style: GoogleFonts.jetBrainsMono(
                               color: const Color(0xFFFBBF24),
                               fontSize: 16,
@@ -155,11 +174,84 @@ class _CheckInOverlayState extends State<CheckInOverlay> with SingleTickerProvid
                         ],
                       ),
                     ),
+                    // Dao Heart state transition banner
+                    if (widget.prevDaoState != null &&
+                        widget.newDaoState != null &&
+                        widget.prevDaoState != widget.newDaoState)
+                      _buildTransitionBanner(),
                   ],
                 ),
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  static const _daoStateColors = <String, Color>{
+    'Wavering':   Color(0xFF9590A8),
+    'Steady':     Color(0xFFFB923C),
+    'Firm':       Color(0xFFF59E0B),
+    'Unyielding': Color(0xFFFBBF24),
+    'Immovable':  Color(0xFF00C9A7),
+  };
+
+  Widget _buildTransitionBanner() {
+    final newState = widget.newDaoState!;
+    final stateColor = _daoStateColors[newState] ?? const Color(0xFF9590A8);
+    final bonus = PlayerData.qiBonusForStreak(widget.newStreak);
+    final bonusPercent = (bonus * 100).round();
+
+    return Opacity(
+      opacity: _transitionOpacity.value,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: stateColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.prevDaoState!,
+                    style: GoogleFonts.cinzel(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 10,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(Icons.arrow_forward, color: stateColor, size: 12),
+                  const SizedBox(width: 6),
+                  Text(
+                    newState,
+                    style: GoogleFonts.cinzel(
+                      color: stateColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              if (bonusPercent > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    '+$bonusPercent% Qi Bonus',
+                    style: GoogleFonts.jetBrainsMono(
+                      color: stateColor,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

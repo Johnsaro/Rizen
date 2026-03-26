@@ -86,6 +86,9 @@ class PlayerData {
   final String realm;
   final int realmRank;
   final String daoHeartState;
+  final bool qiDeviationActive;
+  final String qiDeviationExpiry;
+  final int qiDeviationTrials;
 
   const PlayerData({
     required this.name,
@@ -117,7 +120,45 @@ class PlayerData {
     this.realm = 'Mortal',
     this.realmRank = 1,
     this.daoHeartState = 'Wavering',
+    this.qiDeviationActive = false,
+    this.qiDeviationExpiry = '',
+    this.qiDeviationTrials = 0,
   });
+
+  // ── Dao Heart state helpers ──────────────────────────────
+
+  /// Derives the Dao Heart state name from current streak count.
+  static String stateForStreak(int streak) {
+    if (streak >= 30) return 'Immovable';
+    if (streak >= 14) return 'Unyielding';
+    if (streak >= 7)  return 'Firm';
+    if (streak >= 3)  return 'Steady';
+    return 'Wavering';
+  }
+
+  /// Qi bonus multiplier from Dao Heart state (0.0 to 0.20).
+  static double qiBonusForStreak(int streak) {
+    if (streak >= 30) return 0.20;
+    if (streak >= 14) return 0.15;
+    if (streak >= 7)  return 0.10;
+    if (streak >= 3)  return 0.05;
+    return 0.0;
+  }
+
+  /// Whether Qi Deviation is currently active (not expired).
+  bool get isQiDeviationActive {
+    if (!qiDeviationActive) return false;
+    if (qiDeviationExpiry.isEmpty) return false;
+    final expiry = DateTime.tryParse(qiDeviationExpiry);
+    return expiry != null && expiry.isAfter(DateTime.now());
+  }
+
+  /// Returns a copy with Qi Deviation cleared.
+  PlayerData clearQiDeviation() => copyWith(
+    qiDeviationActive: false,
+    qiDeviationExpiry: '',
+    qiDeviationTrials: 0,
+  );
 
   // Overall maxQi scales with level: Lv1=150, Lv2=300, etc.
   double get maxQi => level * 150.0;
@@ -142,6 +183,9 @@ class PlayerData {
     weaponDurability: {},
     weaponLastUsed: {},
     equippedWeapons: [],
+    qiDeviationActive: false,
+    qiDeviationExpiry: '',
+    qiDeviationTrials: 0,
   );
 
   /// Returns true if [pillName] is currently active (not expired).
@@ -261,6 +305,9 @@ class PlayerData {
       realm: CultivationRealms.nameFor(lv),
       realmRank: CultivationRealms.rankFor(lv),
       daoHeartState: daoHeartState,
+      qiDeviationActive: qiDeviationActive,
+      qiDeviationExpiry: qiDeviationExpiry,
+      qiDeviationTrials: qiDeviationTrials,
     );
   }
 
@@ -304,6 +351,9 @@ class PlayerData {
     String? realm,
     int? realmRank,
     String? daoHeartState,
+    bool? qiDeviationActive,
+    String? qiDeviationExpiry,
+    int? qiDeviationTrials,
   }) {
     return PlayerData(
       name: name ?? this.name,
@@ -335,6 +385,9 @@ class PlayerData {
       realm: realm ?? this.realm,
       realmRank: realmRank ?? this.realmRank,
       daoHeartState: daoHeartState ?? this.daoHeartState,
+      qiDeviationActive: qiDeviationActive ?? this.qiDeviationActive,
+      qiDeviationExpiry: qiDeviationExpiry ?? this.qiDeviationExpiry,
+      qiDeviationTrials: qiDeviationTrials ?? this.qiDeviationTrials,
     );
   }
 }

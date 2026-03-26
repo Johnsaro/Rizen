@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../app_state.dart';
+import '../models/player_data.dart' show PlayerData;
 import '../models/quest.dart';
 import '../theme/rank_colors.dart' as rc;
 import 'guild_master_screen.dart';
@@ -56,9 +57,29 @@ class _GuildScreenState extends State<GuildScreen> {
       final image = await ImagePicker().pickImage(source: ImageSource.camera);
       if (image == null) return;
 
+      // Capture state before check-in for transition detection + reward deltas
+      final prevPlayer = playerNotifier.value;
+      final prevState = PlayerData.stateForStreak(prevPlayer.daoHeartStreak);
+      final prevQi = prevPlayer.qi;
+      final prevLevel = prevPlayer.level;
+      final prevStones = prevPlayer.spiritStones;
+
       await gameService.checkIn();
 
       if (mounted && checkedInNotifier.value) {
+        final newPlayer = playerNotifier.value;
+        final newState = PlayerData.stateForStreak(newPlayer.daoHeartStreak);
+        // Compute actual Qi awarded (accounts for pills, Dao Heart bonus, deviation penalty)
+        final newQi = newPlayer.qi;
+        final newLevel = newPlayer.level;
+        // If leveled up, Qi wrapped around — approximate from level change
+        int qiDelta;
+        if (newLevel > prevLevel) {
+          qiDelta = 50; // fallback — exact value consumed by level-up math
+        } else {
+          qiDelta = (newQi - prevQi).round().clamp(0, 9999);
+        }
+        final stonesDelta = (newPlayer.spiritStones - prevStones).clamp(0, 9999);
         showGeneralDialog(
           context: context,
           barrierDismissible: false,
@@ -66,6 +87,11 @@ class _GuildScreenState extends State<GuildScreen> {
           transitionDuration: Duration.zero,
           pageBuilder: (ctx, a1, a2) => CheckInOverlay(
             onComplete: () => Navigator.of(ctx).pop(),
+            prevDaoState: prevState,
+            newDaoState: newState,
+            qiAwarded: qiDelta > 0 ? qiDelta : 50,
+            stonesAwarded: stonesDelta > 0 ? stonesDelta : 5,
+            newStreak: newPlayer.daoHeartStreak,
           ),
         );
         NagPrompt.maybeShow(context);

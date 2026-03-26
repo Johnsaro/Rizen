@@ -18,10 +18,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   // Pulsing aura animation
   late final AnimationController _auraController;
   late final Animation<double> _auraScale;
+
+  // Immovable badge glow pulse (2.5s)
+  late final AnimationController _immovablePulseController;
+  late final Animation<double> _immovablePulse;
+
+  // Qi Deviation red pulse (3s, opacity 0.6–1.0)
+  late final AnimationController _deviationPulseController;
+  late final Animation<double> _deviationPulse;
 
   // Countdown timer
   Timer? _countdownTimer;
@@ -41,10 +49,69 @@ class _HomeScreenState extends State<HomeScreen>
       CurvedAnimation(parent: _auraController, curve: Curves.easeInOut),
     );
 
+    // Immovable badge glow: scale 1.0 → 1.06 every 2.5s (started on demand)
+    _immovablePulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2500),
+    );
+
+    _immovablePulse = Tween<double>(begin: 1.0, end: 1.06).animate(
+      CurvedAnimation(parent: _immovablePulseController, curve: Curves.easeInOut),
+    );
+
+    // Qi Deviation red pulse: opacity 0.6 → 1.0 every 3s (started on demand)
+    _deviationPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    );
+
+    _deviationPulse = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _deviationPulseController, curve: Curves.easeInOut),
+    );
+
+    // Start/stop pulse controllers based on player state
+    playerNotifier.addListener(_syncPulseControllers);
+    _syncPulseControllers();
+
     _updateCountdown();
     _countdownTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) setState(() => _updateCountdown());
+      if (!mounted) return;
+      setState(() => _updateCountdown());
+      // Auto-clear expired Qi Deviation mid-session
+      final p = playerNotifier.value;
+      if (p.qiDeviationActive && !p.isQiDeviationActive) {
+        final cleared = p.clearQiDeviation();
+        playerNotifier.value = cleared;
+        // Persist so it doesn't resurrect on next app open
+        gameService.updatePlayer(cleared);
+      }
     });
+  }
+
+  void _syncPulseControllers() {
+    final player = playerNotifier.value;
+    // Immovable glow
+    if (player.daoHeartState == 'Immovable') {
+      if (!_immovablePulseController.isAnimating) {
+        _immovablePulseController.repeat(reverse: true);
+      }
+    } else {
+      if (_immovablePulseController.isAnimating) {
+        _immovablePulseController.stop();
+        _immovablePulseController.reset();
+      }
+    }
+    // Deviation red pulse
+    if (player.isQiDeviationActive) {
+      if (!_deviationPulseController.isAnimating) {
+        _deviationPulseController.repeat(reverse: true);
+      }
+    } else {
+      if (_deviationPulseController.isAnimating) {
+        _deviationPulseController.stop();
+        _deviationPulseController.value = 1.0; // full opacity when not pulsing
+      }
+    }
   }
 
   void _updateCountdown() {
@@ -56,7 +123,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    playerNotifier.removeListener(_syncPulseControllers);
     _auraController.dispose();
+    _immovablePulseController.dispose();
+    _deviationPulseController.dispose();
     _countdownTimer?.cancel();
     super.dispose();
   }
@@ -82,6 +152,8 @@ class _HomeScreenState extends State<HomeScreen>
                 children: [
                   _buildPlayerInfo(cs, player),
                   _buildStreakShieldsRow(cs, player),
+                  if (player.isQiDeviationActive)
+                    _buildQiDeviationWarning(cs, player),
                 ],
               ),
             ),
@@ -260,20 +332,94 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ── Dao Heart + Talismans row ────────────────────────────────
 
+  // ── Dao Heart state visual config ──────────────────────
+  static const _daoHeartColors = <String, Color>{
+    'Wavering':   Color(0xFF9590A8),
+    'Steady':     Color(0xFFFB923C),
+    'Firm':       Color(0xFFF59E0B),
+    'Unyielding': Color(0xFFFBBF24),
+    'Immovable':  Color(0xFF00C9A7),
+  };
+
+  static IconData _daoHeartIcon(String state) {
+    return (state == 'Unyielding' || state == 'Immovable')
+        ? Icons.whatshot
+        : Icons.local_fire_department;
+  }
+
   Widget _buildStreakShieldsRow(ColorScheme cs, PlayerData player) {
-    const streakColor = Color(0xFFFB923C); // amber
-    const shieldColor = Color(0xFF60A5FA); // talisman blue
+    const shieldColor = Color(0xFF60A5FA);
+    final stateColor = _daoHeartColors[player.daoHeartState] ?? const Color(0xFF9590A8);
+    final bonus = PlayerData.qiBonusForStreak(player.daoHeartStreak);
+    final bonusPercent = (bonus * 100).round();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
       child: Row(
         children: [
-          // Dao Heart
-          _buildStatBadge(
-            icon: Icons.local_fire_department,
-            iconColor: streakColor,
-            label: '${player.daoHeartStreak}-day heart',
-            cs: cs,
+          // Dao Heart badge — rich version (Immovable gets pulsing glow)
+          AnimatedBuilder(
+            animation: _immovablePulseController,
+            builder: (context, child) {
+              final isImmovable = player.daoHeartState == 'Immovable';
+              return Transform.scale(
+                scale: isImmovable ? _immovablePulse.value : 1.0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: stateColor.withValues(alpha: 0.08),
+                    border: Border.all(color: stateColor.withValues(alpha: 0.4)),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: isImmovable
+                        ? [BoxShadow(
+                            color: stateColor.withValues(alpha: 0.3 * _immovablePulse.value),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          )]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_daoHeartIcon(player.daoHeartState), color: stateColor, size: 14),
+                      const SizedBox(width: 4),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            player.daoHeartState.toUpperCase(),
+                            style: GoogleFonts.cinzel(
+                              color: stateColor,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            '${player.daoHeartStreak}-day',
+                            style: GoogleFonts.jetBrainsMono(
+                              color: cs.onSurface.withValues(alpha: 0.5),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (bonusPercent > 0) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '+$bonusPercent%',
+                          style: GoogleFonts.jetBrainsMono(
+                            color: stateColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(width: 12),
           // Talismans
@@ -316,6 +462,73 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
       ],
+    );
+  }
+
+  // ── Qi Deviation Warning ───────────────────────────────
+
+  Widget _buildQiDeviationWarning(ColorScheme cs, PlayerData player) {
+    const devColor = Color(0xFFEF4444);
+    // Compute time remaining
+    String remaining = '';
+    final expiry = DateTime.tryParse(player.qiDeviationExpiry);
+    if (expiry != null) {
+      final diff = expiry.difference(DateTime.now());
+      if (diff.inHours >= 1) {
+        remaining = '${diff.inHours}h ${diff.inMinutes.remainder(60)}m left';
+      } else if (diff.inMinutes > 0) {
+        remaining = '${diff.inMinutes}m left';
+      } else {
+        remaining = 'expiring...';
+      }
+    }
+
+    return AnimatedBuilder(
+      animation: _deviationPulseController,
+      builder: (context, child) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+        child: Opacity(
+          opacity: _deviationPulse.value,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: devColor.withValues(alpha: 0.08),
+              border: Border.all(color: devColor.withValues(alpha: 0.3)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber, color: devColor, size: 13),
+                const SizedBox(width: 4),
+                Text(
+                  'QI DEVIATION',
+                  style: GoogleFonts.cinzel(
+                    color: devColor,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${player.qiDeviationTrials}/3 trials',
+                  style: GoogleFonts.jetBrainsMono(
+                    color: devColor.withValues(alpha: 0.7),
+                    fontSize: 10,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  remaining,
+                  style: GoogleFonts.jetBrainsMono(
+                    color: devColor.withValues(alpha: 0.5),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -521,9 +734,9 @@ class _HomeScreenState extends State<HomeScreen>
                 border: Border.all(color: cs.primary.withValues(alpha: 0.8), width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: cs.primary.withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    spreadRadius: 2,
+                    color: cs.primary.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    spreadRadius: 1,
                   ),
                 ],
               ),
@@ -547,10 +760,10 @@ class _HomeScreenState extends State<HomeScreen>
             Icon(
               classIcon,
               size: 64,
-              color: cs.primary.withValues(alpha: 0.5),
+              color: cs.primary.withValues(alpha: 0.3),
               shadows: [
-                Shadow(color: cs.primary, blurRadius: 30),
-                Shadow(color: cs.primary, blurRadius: 60),
+                Shadow(color: cs.primary.withValues(alpha: 0.5), blurRadius: 16),
+                Shadow(color: cs.primary.withValues(alpha: 0.2), blurRadius: 32),
               ],
             ),
             // Ancient bracket accents
@@ -586,7 +799,7 @@ class _HomeScreenState extends State<HomeScreen>
                   color: cs.surface,
                   shape: BoxShape.circle,
                   border: Border.all(color: cs.primary.withValues(alpha: 0.5)),
-                  boxShadow: [BoxShadow(color: cs.primary.withValues(alpha: 0.3), blurRadius: 10)],
+                  boxShadow: [BoxShadow(color: cs.primary.withValues(alpha: 0.15), blurRadius: 6)],
                 ),
                 child: Icon(Icons.bolt,
                     color: cs.primary, size: 16),
@@ -601,7 +814,7 @@ class _HomeScreenState extends State<HomeScreen>
                   color: cs.surface,
                   shape: BoxShape.circle,
                   border: Border.all(color: cs.primary.withValues(alpha: 0.5)),
-                  boxShadow: [BoxShadow(color: cs.primary.withValues(alpha: 0.3), blurRadius: 10)],
+                  boxShadow: [BoxShadow(color: cs.primary.withValues(alpha: 0.15), blurRadius: 6)],
                 ),
                 child: Icon(Icons.auto_awesome,
                     color: cs.primary, size: 16),
@@ -684,13 +897,12 @@ class _HomeScreenState extends State<HomeScreen>
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
-              boxShadow: [
-                BoxShadow(
-                  color: cs.primary.withValues(alpha: 0.35),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                ),
-              ],
+              border: Border.all(
+                color: cs.brightness == Brightness.dark
+                    ? cs.outline
+                    : cs.onSurface.withValues(alpha: 0.12),
+                width: 1,
+              ),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(6),
@@ -792,7 +1004,9 @@ class _HomeScreenState extends State<HomeScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: cs.brightness == Brightness.dark
+            ? Colors.transparent
+            : cs.surface,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: borderColor, width: 1),
       ),

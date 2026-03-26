@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../app_state.dart';
 import '../models/player_data.dart' show PlayerData, CultivationRealms;
 import '../models/achievement.dart';
@@ -43,6 +44,12 @@ class ProfileScreen extends StatelessWidget {
                         _buildSection(
                           'DAO PROGRESS',
                           _buildCoreStats(cs, player),
+                          cs,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildSection(
+                          'DAO HEART',
+                          _buildDaoHeartSection(cs, player),
                           cs,
                         ),
                         const SizedBox(height: 16),
@@ -255,6 +262,282 @@ class ProfileScreen extends StatelessWidget {
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
         ),
+      ),
+    );
+  }
+
+  // ── Dao Heart Section ──────────────────────────────────
+
+  static const _daoStates = ['Wavering', 'Steady', 'Firm', 'Unyielding', 'Immovable'];
+
+  static const _daoColors = <String, Color>{
+    'Wavering':   Color(0xFF9590A8),
+    'Steady':     Color(0xFFFB923C),
+    'Firm':       Color(0xFFF59E0B),
+    'Unyielding': Color(0xFFFBBF24),
+    'Immovable':  Color(0xFF00C9A7),
+  };
+
+  static const _daoFlavor = <String, String>{
+    'Wavering':   'Your foundation is unstable. Keep showing up.',
+    'Steady':     'The path is forming beneath your feet.',
+    'Firm':       'Lesser demons dare not approach.',
+    'Unyielding': 'Even heaven acknowledges your resolve.',
+    'Immovable':  'Your Dao Heart cannot be shaken.',
+  };
+
+  Widget _buildDaoHeartSection(ColorScheme cs, PlayerData player) {
+    final state = player.daoHeartState;
+    final stateColor = _daoColors[state] ?? const Color(0xFF9590A8);
+    final bonus = PlayerData.qiBonusForStreak(player.daoHeartStreak);
+    final bonusPercent = (bonus * 100).round();
+    final stateIndex = _daoStates.indexOf(state).clamp(0, 4);
+    final stateIcon = (state == 'Unyielding' || state == 'Immovable')
+        ? Icons.whatshot
+        : Icons.local_fire_department;
+
+    return Column(
+      children: [
+        // Current state row
+        Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: stateColor.withValues(alpha: 0.15),
+              ),
+              child: Icon(stateIcon, color: stateColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    state.toUpperCase(),
+                    style: GoogleFonts.cinzel(
+                      color: stateColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    _daoFlavor[state] ?? '',
+                    style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.5),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '+$bonusPercent%',
+                  style: GoogleFonts.jetBrainsMono(
+                    color: stateColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  'Qi Bonus',
+                  style: TextStyle(
+                    color: cs.onSurface.withValues(alpha: 0.35),
+                    fontSize: 9,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // 5-dot progression bar
+        SizedBox(
+          height: 40,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final trackWidth = constraints.maxWidth - 40; // 20px padding each side
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Background line
+                  Positioned(
+                    left: 20,
+                    right: 20,
+                    child: Container(height: 2, color: cs.outline),
+                  ),
+                  // Active line
+                  if (stateIndex > 0)
+                    Positioned(
+                      left: 20,
+                      child: Container(
+                        height: 2,
+                        width: trackWidth * (stateIndex / 4),
+                        color: stateColor,
+                      ),
+                    ),
+                  // Dots
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: List.generate(5, (i) {
+                      final isActive = i <= stateIndex;
+                      final isCurrent = i == stateIndex;
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: isCurrent ? 12 : 10,
+                            height: isCurrent ? 12 : 10,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isActive ? stateColor : Colors.transparent,
+                              border: Border.all(
+                                color: isActive ? stateColor : cs.outline,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _daoStates[i],
+                            style: TextStyle(
+                              color: isCurrent
+                                  ? cs.onSurface
+                                  : cs.onSurface.withValues(alpha: 0.3),
+                              fontSize: 8,
+                              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Streak counter
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.local_fire_department, color: const Color(0xFFFB923C), size: 16),
+            const SizedBox(width: 4),
+            Text(
+              '${player.daoHeartStreak} day streak',
+              style: GoogleFonts.jetBrainsMono(
+                color: cs.onSurface,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+
+        // Qi Deviation card (conditional)
+        if (player.isQiDeviationActive) ...[
+          const SizedBox(height: 12),
+          _buildDeviationCard(cs, player),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDeviationCard(ColorScheme cs, PlayerData player) {
+    const devColor = Color(0xFFEF4444);
+    const jadeGreen = Color(0xFF00C9A7);
+
+    String remaining = '';
+    final expiry = DateTime.tryParse(player.qiDeviationExpiry);
+    if (expiry != null) {
+      final diff = expiry.difference(DateTime.now());
+      final h = diff.inHours;
+      final m = diff.inMinutes.remainder(60);
+      if (h > 0) {
+        remaining = '${h}h ${m}m remaining';
+      } else if (m > 0) {
+        remaining = '${m}m remaining';
+      } else {
+        remaining = 'expiring...';
+      }
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: devColor.withValues(alpha: 0.08),
+        border: Border.all(color: devColor.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.warning_amber, color: devColor, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                'QI DEVIATION ACTIVE',
+                style: GoogleFonts.cinzel(
+                  color: devColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Qi gain reduced by 50%. Complete 3 trials to stabilize.',
+            style: TextStyle(
+              color: devColor.withValues(alpha: 0.7),
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              // 3 trial circles
+              ...List.generate(3, (i) {
+                final completed = i < player.qiDeviationTrials;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: completed ? jadeGreen : Colors.transparent,
+                      border: Border.all(
+                        color: completed ? jadeGreen : devColor.withValues(alpha: 0.4),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              const Spacer(),
+              Text(
+                remaining,
+                style: GoogleFonts.jetBrainsMono(
+                  color: devColor.withValues(alpha: 0.5),
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

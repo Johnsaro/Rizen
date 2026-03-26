@@ -9,4 +9,4 @@ final openAiApiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
 
 // App version — bump this on every release. Compared against Supabase app_config
 // to trigger force-update or soft-update prompts.
-const appVersion = '2.2.0';
+const appVersion = '2.3.0';

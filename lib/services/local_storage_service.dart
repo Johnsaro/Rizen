@@ -209,6 +209,9 @@ class LocalStorageService {
         'realm': p.realm,
         'realm_rank': p.realmRank,
         'dao_heart_state': p.daoHeartState,
+        'qi_deviation_active': p.qiDeviationActive,
+        'qi_deviation_expiry': p.qiDeviationExpiry,
+        'qi_deviation_trials': p.qiDeviationTrials,
       };
 
   static PlayerData _playerFromJson(Map<String, dynamic> row) => PlayerData(
@@ -244,6 +247,9 @@ class LocalStorageService {
         realm: (row['realm'] as String?) ?? 'Mortal',
         realmRank: (row['realm_rank'] as num?)?.toInt() ?? 1,
         daoHeartState: (row['dao_heart_state'] as String?) ?? 'Wavering',
+        qiDeviationActive: (row['qi_deviation_active'] as bool?) ?? false,
+        qiDeviationExpiry: (row['qi_deviation_expiry'] as String?) ?? '',
+        qiDeviationTrials: (row['qi_deviation_trials'] as num?)?.toInt() ?? 0,
       );
 
   static Map<String, double> _toDoubleMap(dynamic data) {

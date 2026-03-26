@@ -132,15 +132,44 @@ class GameService {
               }
 
               if (streak != player.daoHeartStreak || talismans != player.talismans) {
-                final penalized = player.copyWith(daoHeartStreak: streak, talismans: talismans);
+                var penalized = player.copyWith(
+                  daoHeartStreak: streak,
+                  talismans: talismans,
+                  daoHeartState: PlayerData.stateForStreak(streak),
+                );
+
+                // Qi Deviation trigger — breaking a 14-29 day streak causes deviation
+                // Immovable (30+) is immune; talisman-absorbed breaks don't trigger
+                if (streak == 0 && player.daoHeartStreak >= 14 && player.daoHeartStreak < 30) {
+                  final expiry = DateTime.now().add(const Duration(hours: 48)).toUtc().toIso8601String();
+                  penalized = penalized.copyWith(
+                    qiDeviationActive: true,
+                    qiDeviationExpiry: expiry,
+                    qiDeviationTrials: 0,
+                  );
+                }
+
                 // Only commit penalty if Supabase write succeeds — prevents double-deduction on crash
                 try {
                   await StorageRouter.saveProfile(_userId, penalized);
                   player = penalized;
-                  _createNotification(
-                    '"Your streak has broken. The foundation cracks. Begin again — stronger."',
-                    NotificationType.streakBreak,
-                  );
+                  if (streak == 0) {
+                    _createNotification(
+                      '"Your streak has broken. The foundation cracks. Begin again — stronger."',
+                      NotificationType.streakBreak,
+                    );
+                    if (penalized.qiDeviationActive && penalized.qiDeviationExpiry.isNotEmpty) {
+                      _createNotification(
+                        '"Qi deviation detected. Your foundation shatters. Complete 3 trials within 48 hours to stabilize."',
+                        NotificationType.qiDeviation,
+                      );
+                    }
+                  } else if (consumed > 0) {
+                    _createNotification(
+                      '"Your talismans absorbed $consumed missed day${consumed > 1 ? 's' : ''}. Streak preserved."',
+                      NotificationType.info,
+                    );
+                  }
                 } catch (_) {
                   errorNotifier.value = 'Failed to process streak. Check your connection.';
                 }
@@ -168,6 +197,17 @@ class GameService {
             debugPrint('Failed to persist cleaned pills: $e');
           }
         }
+
+        // Auto-clear expired Qi Deviation (48h timer elapsed)
+        if (player.qiDeviationActive && !player.isQiDeviationActive) {
+          player = player.clearQiDeviation();
+          try {
+            await StorageRouter.saveProfile(_userId, player);
+          } catch (e) {
+            debugPrint('Failed to persist cleared Qi Deviation: $e');
+          }
+        }
+
         playerNotifier.value = player;
       }
 
@@ -237,6 +277,17 @@ class GameService {
       updatedPlayer = updatedPlayer.copyWith(
         trialsCompleted: updatedPlayer.trialsCompleted + 1,
       );
+
+      // Qi Deviation recovery — each quest completion counts as a trial
+      if (updatedPlayer.isQiDeviationActive) {
+        final newTrials = updatedPlayer.qiDeviationTrials + 1;
+        if (newTrials >= 3) {
+          updatedPlayer = updatedPlayer.clearQiDeviation();
+        } else {
+          updatedPlayer = updatedPlayer.copyWith(qiDeviationTrials: newTrials);
+        }
+      }
+
       final newAchievements = <String>[];
       updatedPlayer = _checkAndUnlockAchievements(updatedPlayer, newUnlocks: newAchievements);
 
@@ -253,6 +304,13 @@ class GameService {
           '"Quest complete. ${quest.title} — ${quest.xpReward} XP claimed."',
           NotificationType.questComplete,
         );
+        // Qi Deviation cleared notification
+        if (!updatedPlayer.qiDeviationActive && prevPlayer.isQiDeviationActive) {
+          _createNotification(
+            '"Qi deviation stabilized. Your foundation is restored."',
+            NotificationType.qiDeviation,
+          );
+        }
         if (updatedPlayer.level > prevPlayer.level) {
           _createNotification(
             '"You have advanced to Level ${updatedPlayer.level}. The guild takes notice."',
@@ -342,7 +400,13 @@ class GameService {
     // Base check-in rewards: +50 Qi, +5 Spirit Stones (+ any milestone bonus)
     var updatedPlayer = _awardQiAndStones(prevPlayer, 50, 5 + bonusStones, classTag: 'Any');
     final newTalismans = (updatedPlayer.talismans + bonusTalismans).clamp(0, 3);
-    updatedPlayer = updatedPlayer.copyWith(daoHeartStreak: newStreak, talismans: newTalismans);
+    final newState = PlayerData.stateForStreak(newStreak);
+    final prevState = PlayerData.stateForStreak(prevPlayer.daoHeartStreak);
+    updatedPlayer = updatedPlayer.copyWith(
+      daoHeartStreak: newStreak,
+      talismans: newTalismans,
+      daoHeartState: newState,
+    );
     final newAchievements = <String>[];
     updatedPlayer = _checkAndUnlockAchievements(updatedPlayer, newUnlocks: newAchievements);
 
@@ -357,6 +421,13 @@ class GameService {
         '"You have arrived. The guild acknowledges your presence."',
         NotificationType.checkin,
       );
+      // Dao Heart state transition notification
+      if (newState != prevState) {
+        _createNotification(
+          _daoHeartTransitionMessage(newState),
+          NotificationType.streakMilestone,
+        );
+      }
       if (bonusStones > 0) {
         _createNotification(
           '"$newStreak day streak. The guild recognizes your dedication. +$bonusStones Spirit Stones awarded."',
@@ -582,6 +653,17 @@ class GameService {
       hp: updatedPlayer.maxHp,
       monstersKilled: updatedPlayer.monstersKilled + 1,
     );
+
+    // Qi Deviation recovery — each combat victory counts as a trial
+    if (updatedPlayer.isQiDeviationActive) {
+      final newTrials = updatedPlayer.qiDeviationTrials + 1;
+      if (newTrials >= 3) {
+        updatedPlayer = updatedPlayer.clearQiDeviation();
+      } else {
+        updatedPlayer = updatedPlayer.copyWith(qiDeviationTrials: newTrials);
+      }
+    }
+
     final newAchievements = <String>[];
     updatedPlayer = _checkAndUnlockAchievements(updatedPlayer, newUnlocks: newAchievements);
     playerNotifier.value = updatedPlayer;
@@ -592,6 +674,13 @@ class GameService {
         _createNotification(
           '"Monster defeated. +$xpReward XP claimed. HP restored."',
           NotificationType.combatVictory,
+        );
+      }
+      // Qi Deviation cleared notification
+      if (!updatedPlayer.qiDeviationActive && prevPlayer.isQiDeviationActive) {
+        _createNotification(
+          '"Qi deviation stabilized. Your foundation is restored."',
+          NotificationType.qiDeviation,
         );
       }
       if (updatedPlayer.level > prevPlayer.level) {
@@ -993,6 +1082,14 @@ class GameService {
       stoneMultiplier += 1.0;
     }
 
+    // Dao Heart state bonus (+5% to +20%)
+    qiMultiplier += PlayerData.qiBonusForStreak(player.daoHeartStreak);
+
+    // Qi Deviation penalty — halves total Qi gain
+    if (player.isQiDeviationActive) {
+      qiMultiplier *= 0.5;
+    }
+
     final effectiveQi = (qi * qiMultiplier).round();
     final effectiveStones = (stones * stoneMultiplier).round();
 
@@ -1095,4 +1192,13 @@ class GameService {
       );
     }
   }
+
+  /// Narrative message for Dao Heart state transitions.
+  String _daoHeartTransitionMessage(String state) => switch (state) {
+    'Steady'     => '"Your Dao Heart steadies. +5% Qi."',
+    'Firm'       => '"Your Dao Heart grows firm. Lesser demons dare not approach. +10% Qi."',
+    'Unyielding' => '"Your Dao Heart is unyielding. +15% Qi."',
+    'Immovable'  => '"Your Dao Heart is immovable. Immune to minor Qi Deviation. +20% Qi."',
+    _            => '"Your Dao Heart flickers."',
+  };
 }
