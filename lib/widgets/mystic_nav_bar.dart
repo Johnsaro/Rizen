@@ -70,7 +70,7 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
     final size = MediaQuery.of(context).size;
 
     return SizedBox(
-      height: 110,
+      height: 130,
       width: size.width,
       child: Stack(
         clipBehavior: Clip.none,
@@ -78,7 +78,7 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
         children: [
           // ── Layer 1: The Sacred Altar Structure ──
           CustomPaint(
-            size: Size(size.width, 90),
+            size: Size(size.width, 100),
             painter: _AltarStructurePainter(
               color: cs.surface,
               accent: cs.primary,
@@ -88,7 +88,7 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
 
           // ── Layer 2: Nav Items ──
           Positioned(
-            bottom: 15,
+            bottom: 20,
             left: 0,
             right: 0,
             child: Row(
@@ -105,7 +105,7 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
 
           // ── Layer 3: The Spiritual Core (Integrated FAB) ──
           Positioned(
-            bottom: 25,
+            bottom: 30,
             child: GestureDetector(
               onTap: () => widget.onTap(2),
               child: _buildIntegratedCore(cs),
@@ -146,9 +146,9 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: cs.primary.withValues(alpha: value * (0.3 + (pulse * 0.2))),
-                              blurRadius: 15 * value,
-                              spreadRadius: 2 * value,
+                              color: cs.primary.withValues(alpha: value * (0.15 + (pulse * 0.1))),
+                              blurRadius: 10 * value,
+                              spreadRadius: 1 * value,
                             ),
                           ],
                         ),
@@ -231,15 +231,15 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
             boxShadow: [
               // Layered Glow
               BoxShadow(
-                color: sealColor.withValues(alpha: 0.2 + (pulse * 0.2)),
-                blurRadius: 10 + (pulse * 10),
-                spreadRadius: 1 + (pulse * 3),
+                color: sealColor.withValues(alpha: 0.12 + (pulse * 0.1)),
+                blurRadius: 8 + (pulse * 6),
+                spreadRadius: 1 + (pulse * 2),
               ),
               if (isActive)
                 BoxShadow(
-                  color: sealColor.withValues(alpha: 0.1),
-                  blurRadius: 30,
-                  spreadRadius: 10,
+                  color: sealColor.withValues(alpha: 0.06),
+                  blurRadius: 20,
+                  spreadRadius: 5,
                 ),
             ],
           ),

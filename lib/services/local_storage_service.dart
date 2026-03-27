@@ -28,7 +28,8 @@ class LocalStorageService {
     final data = jsonDecode(raw) as Map<String, dynamic>;
     final player = _playerFromJson(data);
     final checkedInDate = (data['checked_in_date'] as String?) ?? '';
-    return (player: player, checkedInDate: checkedInDate);
+    final onboarded = (data['onboarding_complete'] as bool?) ?? false;
+    return (player: player, checkedInDate: checkedInDate, onboardingComplete: onboarded);
   }
 
   static Future<void> saveProfile(

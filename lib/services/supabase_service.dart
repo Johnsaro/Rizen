@@ -10,9 +10,9 @@ import '../models/player_path.dart';
 import '../models/lesson.dart';
 import '../models/weapon.dart';
 
-// Record type returned by loadProfile — carries both the player data and the
-// checked-in date stored in the profile row.
-typedef ProfileResult = ({PlayerData player, String checkedInDate});
+// Record type returned by loadProfile — carries the player data, the
+// checked-in date, and whether onboarding was already completed.
+typedef ProfileResult = ({PlayerData player, String checkedInDate, bool onboardingComplete});
 
 class SupabaseService {
   static SupabaseClient get _client => Supabase.instance.client;
@@ -45,20 +45,16 @@ class SupabaseService {
         .from('profiles')
         .select()
         .eq('user_id', userId)
-        .eq('onboarding_complete', true)
         .maybeSingle()
         .timeout(_timeout);
 
     if (row == null) {
-      final anyRow = await _client
-          .from('profiles')
-          .select('user_id, name, main_path, onboarding_complete')
-          .eq('user_id', userId)
-          .maybeSingle()
-          .timeout(_timeout);
-      debugPrint('[SupabaseService] loadProfile($userId): onboarded row=null | raw row=${anyRow != null ? "exists(onboarding=${anyRow['onboarding_complete']}, path=${anyRow['main_path']})" : "NO ROW AT ALL"}');
+      debugPrint('[SupabaseService] loadProfile($userId): NO ROW AT ALL');
       return null;
     }
+
+    final onboarded = (row['onboarding_complete'] as bool?) ?? false;
+    debugPrint('[SupabaseService] loadProfile($userId): found row | onboarding_complete=$onboarded | name=${row['name']}');
 
     final player = PlayerData(
       name: (row['name'] as String?) ?? '',
@@ -101,6 +97,7 @@ class SupabaseService {
     return (
       player: player,
       checkedInDate: (row['checked_in_date'] as String?) ?? '',
+      onboardingComplete: onboarded,
     );
   }
 
@@ -152,10 +149,16 @@ class SupabaseService {
     if (onboardingComplete != null) data['onboarding_complete'] = onboardingComplete;
     if (originPlatform != null) data['origin_platform'] = originPlatform;
 
-    await _client
-        .from('profiles')
-        .upsert(data, onConflict: 'user_id')
-        .timeout(_timeout);
+    try {
+      await _client
+          .from('profiles')
+          .upsert(data, onConflict: 'user_id')
+          .timeout(_timeout);
+    } catch (e) {
+      debugPrint('[SupabaseService.saveProfile] DB ERROR: $e');
+      debugPrint('[SupabaseService.saveProfile] Data keys: ${data.keys.toList()}');
+      rethrow;
+    }
   }
 
   static Future<void> markOnboardingComplete(String userId) async {

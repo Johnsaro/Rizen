@@ -158,6 +158,8 @@ class _NotificationCard extends StatelessWidget {
         return Icons.warning_amber_rounded;
       case NotificationType.achievement:
         return Icons.auto_awesome;
+      case NotificationType.qiDeviation:
+        return Icons.warning_amber;
       case NotificationType.info:
         return Icons.info_outline;
     }

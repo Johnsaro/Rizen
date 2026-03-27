@@ -96,7 +96,7 @@ class _MerchantLogScreenState extends State<MerchantLogScreen> {
     final amountText = _amountController.text.trim();
     if (amountText.isEmpty || _selectedTagId == null) return;
     final amount = double.tryParse(amountText);
-    if (amount == null || amount <= 0) return;
+    if (amount == null || amount <= 0 || amount > 999999.99) return;
 
     setState(() => _isSubmitting = true);
 
@@ -236,6 +236,15 @@ class _MerchantLogScreenState extends State<MerchantLogScreen> {
     controller.dispose();
 
     if (label != null && label.isNotEmpty) {
+      // Sanitize: 2-20 chars, letters/numbers/spaces only
+      if (label.length < 2 || label.length > 20 || !RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(label)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Tag must be 2-20 characters, letters and numbers only.')),
+          );
+        }
+        return;
+      }
       try {
         final tag = await merchantLogService.createTag(label);
         await _loadTags();
@@ -431,6 +440,7 @@ class _MerchantLogScreenState extends State<MerchantLogScreen> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                LengthLimitingTextInputFormatter(10), // max "999999.99" + margin
               ],
               style: GoogleFonts.jetBrainsMono(
                 fontSize: 32,
@@ -467,22 +477,27 @@ class _MerchantLogScreenState extends State<MerchantLogScreen> {
           final isSelected = _selectedTagId == tag.id;
           return GestureDetector(
             onTap: () => setState(() => _selectedTagId = tag.id),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? cs.secondary.withValues(alpha: 0.15) : cs.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isSelected ? cs.secondary : cs.outline,
-                  width: isSelected ? 1.5 : 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 140),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? cs.secondary.withValues(alpha: 0.15) : cs.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isSelected ? cs.secondary : cs.outline,
+                    width: isSelected ? 1.5 : 1,
+                  ),
                 ),
-              ),
-              child: Text(
-                tag.label,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected ? cs.secondary : cs.onSurface,
+                child: Text(
+                  tag.label,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    color: isSelected ? cs.secondary : cs.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -770,18 +785,22 @@ class _MerchantLogScreenState extends State<MerchantLogScreen> {
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: cs.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        entry.tagLabel,
-                        style: GoogleFonts.inter(fontSize: 11, color: cs.primary),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          entry.tagLabel,
+                          style: GoogleFonts.inter(fontSize: 11, color: cs.primary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     Text(
                       _formatAmount(entry.amount),
                       style: AppTheme.statNumberStyle.copyWith(

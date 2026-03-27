@@ -49,6 +49,7 @@ class GameService {
       return '';
     }
   }
+
   bool get _hasSession => _userId.isNotEmpty;
 
   // ── Load all data on startup ─────────────────────────────
@@ -62,41 +63,70 @@ class GameService {
 
       var result = await StorageRouter.loadProfile(_userId);
 
-      debugPrint('[GameService] loadProfile result for $_userId: ${result != null ? "found" : "null"}');
+      debugPrint(
+        '[GameService] loadProfile result for $_userId: ${result != null ? "found" : "null"}',
+      );
 
-      // Web-registered users have auth metadata (full_name, class) but no
-      // profile row yet. Auto-create their profile so they skip GM onboarding.
+      // Web-registered users may already have a profile row with
+      // onboarding_complete=false. Detect this and auto-complete their
+      // profile so they skip GM onboarding on the app.
+      // Also handles the case where no profile row exists at all (metadata-only).
       // Skip for guests — they get a default local profile, not a Supabase row.
-      if (result == null && !GuestSession.isActive) {
-        final meta =
-            Supabase.instance.client.auth.currentUser?.userMetadata ?? {};
-        final webName = (meta['full_name'] as String?)?.trim() ?? '';
-        final webClass = (meta['class'] as String?)?.trim() ?? '';
+      if (!GuestSession.isActive) {
+        final needsAutoCreate = result == null;
+        final needsAutoComplete = result != null && !result.onboardingComplete;
 
-        debugPrint('[GameService] No onboarded profile — checking auth metadata: name="$webName" class="$webClass" allMeta=$meta');
+        if (needsAutoCreate || needsAutoComplete) {
+          final meta =
+              Supabase.instance.client.auth.currentUser?.userMetadata ?? {};
+          final webName = (meta['full_name'] as String?)?.trim() ?? '';
+          final webClass = (meta['class'] as String?)?.trim() ?? '';
 
-        // Web signup already stores V2 path names — use directly
-        final resolvedPath = webClass.isNotEmpty ? webClass : 'Formation Master';
+          // For existing but incomplete profiles, prefer the profile name
+          // over metadata — user may have partially filled it on web.
+          final existingName = result?.player.name ?? '';
+          final resolvedName = existingName.isNotEmpty ? existingName : webName;
 
-        if (webName.isNotEmpty) {
-          debugPrint('[GameService] Auto-creating profile: name="$webName" mainPath="$resolvedPath" (raw class="$webClass")');
-          final webPlayer = PlayerData(
-            name: webName,
-            mainPath: resolvedPath,
-            sidePath: 'Shadow Arts',
+          debugPrint(
+            '[GameService] Profile needs ${needsAutoCreate ? "auto-create" : "auto-complete"} — '
+            'resolvedName="$resolvedName" webClass="$webClass" allMeta=$meta',
           );
-          await SupabaseService.saveProfile(
-            _userId,
-            webPlayer,
-            onboardingComplete: true,
-            // Gemini Edit (2026-03-18): Added originPlatform to distinguish web/flutter users since Alex is unavailable
-            originPlatform: 'browser',
-          );
-          // Re-load so the rest of loadAll sees the freshly created row
-          result = await SupabaseService.loadProfile(_userId);
-          debugPrint('[GameService] Re-loaded after auto-create: ${result != null ? "success" : "STILL NULL"}');
-        } else {
-          debugPrint('[GameService] Cannot auto-create — webName is empty. User needs Flutter onboarding.');
+
+          final resolvedPath = webClass.isNotEmpty
+              ? webClass
+              : (result?.player.mainPath.isNotEmpty == true
+                  ? result!.player.mainPath
+                  : 'Formation Master');
+
+          if (resolvedName.isNotEmpty) {
+            debugPrint(
+              '[GameService] Auto-${needsAutoCreate ? "creating" : "completing"} profile: '
+              'name="$resolvedName" mainPath="$resolvedPath"',
+            );
+            final webPlayer = needsAutoComplete
+                ? result!.player // keep existing data, just mark complete
+                : PlayerData(
+                    name: resolvedName,
+                    mainPath: resolvedPath,
+                    sidePath: 'Shadow Arts',
+                  );
+            await SupabaseService.saveProfile(
+              _userId,
+              webPlayer,
+              onboardingComplete: true,
+              originPlatform: 'browser',
+            );
+            // Re-load so the rest of loadAll sees the completed row
+            result = await SupabaseService.loadProfile(_userId);
+            debugPrint(
+              '[GameService] Re-loaded after auto-${needsAutoCreate ? "create" : "complete"}: '
+              '${result != null ? "success (onboarded=${result.onboardingComplete})" : "STILL NULL"}',
+            );
+          } else {
+            debugPrint(
+              '[GameService] Cannot auto-create — no name available. User needs Flutter onboarding.',
+            );
+          }
         }
       }
 
@@ -114,7 +144,9 @@ class GameService {
         if (lastCheckin.isNotEmpty && lastCheckin != today) {
           final lastDate = DateTime.tryParse(lastCheckin);
           if (lastDate == null) {
-            debugPrint('Invalid checkedInDate format: $lastCheckin — skipping streak check');
+            debugPrint(
+              'Invalid checkedInDate format: $lastCheckin — skipping streak check',
+            );
           } else {
             final todayDate = DateTime(now.year, now.month, now.day);
             final dayDiff = todayDate.difference(lastDate).inDays;
@@ -131,7 +163,8 @@ class GameService {
                 streak = 0;
               }
 
-              if (streak != player.daoHeartStreak || talismans != player.talismans) {
+              if (streak != player.daoHeartStreak ||
+                  talismans != player.talismans) {
                 var penalized = player.copyWith(
                   daoHeartStreak: streak,
                   talismans: talismans,
@@ -140,8 +173,13 @@ class GameService {
 
                 // Qi Deviation trigger — breaking a 14-29 day streak causes deviation
                 // Immovable (30+) is immune; talisman-absorbed breaks don't trigger
-                if (streak == 0 && player.daoHeartStreak >= 14 && player.daoHeartStreak < 30) {
-                  final expiry = DateTime.now().add(const Duration(hours: 48)).toUtc().toIso8601String();
+                if (streak == 0 &&
+                    player.daoHeartStreak >= 14 &&
+                    player.daoHeartStreak < 30) {
+                  final expiry = DateTime.now()
+                      .add(const Duration(hours: 48))
+                      .toUtc()
+                      .toIso8601String();
                   penalized = penalized.copyWith(
                     qiDeviationActive: true,
                     qiDeviationExpiry: expiry,
@@ -158,7 +196,8 @@ class GameService {
                       '"Your streak has broken. The foundation cracks. Begin again — stronger."',
                       NotificationType.streakBreak,
                     );
-                    if (penalized.qiDeviationActive && penalized.qiDeviationExpiry.isNotEmpty) {
+                    if (penalized.qiDeviationActive &&
+                        penalized.qiDeviationExpiry.isNotEmpty) {
                       _createNotification(
                         '"Qi deviation detected. Your foundation shatters. Complete 3 trials within 48 hours to stabilize."',
                         NotificationType.qiDeviation,
@@ -171,7 +210,8 @@ class GameService {
                     );
                   }
                 } catch (_) {
-                  errorNotifier.value = 'Failed to process streak. Check your connection.';
+                  errorNotifier.value =
+                      'Failed to process streak. Check your connection.';
                 }
               }
             }
@@ -289,7 +329,10 @@ class GameService {
       }
 
       final newAchievements = <String>[];
-      updatedPlayer = _checkAndUnlockAchievements(updatedPlayer, newUnlocks: newAchievements);
+      updatedPlayer = _checkAndUnlockAchievements(
+        updatedPlayer,
+        newUnlocks: newAchievements,
+      );
 
       playerNotifier.value = updatedPlayer;
       questNotifier.value = updatedQuests;
@@ -305,7 +348,8 @@ class GameService {
           NotificationType.questComplete,
         );
         // Qi Deviation cleared notification
-        if (!updatedPlayer.qiDeviationActive && prevPlayer.isQiDeviationActive) {
+        if (!updatedPlayer.qiDeviationActive &&
+            prevPlayer.isQiDeviationActive) {
           _createNotification(
             '"Qi deviation stabilized. Your foundation is restored."',
             NotificationType.qiDeviation,
@@ -341,7 +385,10 @@ class GameService {
     // Set deadline based on quest type
     final today = DateTime.now().toIso8601String().substring(0, 10);
     final deadline = quest.type == 'main'
-        ? DateTime.now().add(const Duration(days: 7)).toIso8601String().substring(0, 10)
+        ? DateTime.now()
+              .add(const Duration(days: 7))
+              .toIso8601String()
+              .substring(0, 10)
         : today;
     final questWithDeadline = quest.copyWith(deadline: deadline);
 
@@ -361,8 +408,9 @@ class GameService {
   Future<void> addGuildBoardQuests(List<Quest> quests) async {
     if (!_hasSession) return;
     final prevBoard = guildBoardNotifier.value;
-    final newQuests =
-        quests.where((q) => !prevBoard.any((b) => b.id == q.id)).toList();
+    final newQuests = quests
+        .where((q) => !prevBoard.any((b) => b.id == q.id))
+        .toList();
     if (newQuests.isEmpty) return;
 
     final updatedBoard = [...prevBoard, ...newQuests];
@@ -381,6 +429,7 @@ class GameService {
 
   Future<void> checkIn() async {
     if (!_hasSession) return;
+    if (checkedInNotifier.value) return;
     // Snapshot both touched notifiers before any mutation
     final prevPlayer = playerNotifier.value;
     final prevCheckedIn = checkedInNotifier.value;
@@ -391,14 +440,30 @@ class GameService {
     // Milestone rewards — re-trigger on every rebuild (simpler, more motivating)
     int bonusStones = 0;
     int bonusTalismans = 0;
-    if (newStreak == 7)   { bonusStones = 200;   bonusTalismans = 1; }
-    if (newStreak == 30)  { bonusStones = 500; }
-    if (newStreak == 60)  { bonusStones = 1000; }
-    if (newStreak == 100) { bonusStones = 2000; }
-    if (newStreak == 365) { bonusStones = 2000; }
+    if (newStreak == 7) {
+      bonusStones = 200;
+      bonusTalismans = 1;
+    }
+    if (newStreak == 30) {
+      bonusStones = 500;
+    }
+    if (newStreak == 60) {
+      bonusStones = 1000;
+    }
+    if (newStreak == 100) {
+      bonusStones = 2000;
+    }
+    if (newStreak == 365) {
+      bonusStones = 2000;
+    }
 
     // Base check-in rewards: +50 Qi, +5 Spirit Stones (+ any milestone bonus)
-    var updatedPlayer = _awardQiAndStones(prevPlayer, 50, 5 + bonusStones, classTag: 'Any');
+    var updatedPlayer = _awardQiAndStones(
+      prevPlayer,
+      50,
+      5 + bonusStones,
+      classTag: 'Any',
+    );
     final newTalismans = (updatedPlayer.talismans + bonusTalismans).clamp(0, 3);
     final newState = PlayerData.stateForStreak(newStreak);
     final prevState = PlayerData.stateForStreak(prevPlayer.daoHeartStreak);
@@ -408,13 +473,20 @@ class GameService {
       daoHeartState: newState,
     );
     final newAchievements = <String>[];
-    updatedPlayer = _checkAndUnlockAchievements(updatedPlayer, newUnlocks: newAchievements);
+    updatedPlayer = _checkAndUnlockAchievements(
+      updatedPlayer,
+      newUnlocks: newAchievements,
+    );
 
     playerNotifier.value = updatedPlayer;
     checkedInNotifier.value = true;
 
     try {
-      await StorageRouter.saveProfile(_userId, updatedPlayer, checkinDate: today);
+      await StorageRouter.saveProfile(
+        _userId,
+        updatedPlayer,
+        checkinDate: today,
+      );
 
       // Notifications — fire-and-forget
       _createNotification(
@@ -477,7 +549,10 @@ class GameService {
       final prevPlayer = playerNotifier.value;
       var updatedPlayer = prevPlayer.buyItem(itemName, cost);
       final newAchievements = <String>[];
-      updatedPlayer = _checkAndUnlockAchievements(updatedPlayer, newUnlocks: newAchievements);
+      updatedPlayer = _checkAndUnlockAchievements(
+        updatedPlayer,
+        newUnlocks: newAchievements,
+      );
       playerNotifier.value = updatedPlayer;
 
       try {
@@ -512,23 +587,37 @@ class GameService {
           if (prevPlayer.maxHp <= 0) return 'Cannot use — max HP is invalid';
           if (prevPlayer.hp >= prevPlayer.maxHp) return 'HP is already full';
           final newHp = (prevPlayer.hp + 300).clamp(0, prevPlayer.maxHp);
-          updatedPlayer = prevPlayer.useInstantItem(itemName).copyWith(hp: newHp);
+          updatedPlayer = prevPlayer
+              .useInstantItem(itemName)
+              .copyWith(hp: newHp);
 
         case 'Protective Talisman':
           if (prevPlayer.talismans >= 3) return 'Talismans already at max (3)';
-          updatedPlayer = prevPlayer.useInstantItem(itemName)
+          updatedPlayer = prevPlayer
+              .useInstantItem(itemName)
               .copyWith(talismans: (prevPlayer.talismans + 1).clamp(0, 3));
 
         case 'Focus Elixir':
-          if (prevPlayer.isPillActive('Focus Elixir')) return 'Focus Elixir is already active';
-          updatedPlayer = prevPlayer.activatePill('Focus Elixir', itemName, const Duration(hours: 2));
+          if (prevPlayer.isPillActive('Focus Elixir'))
+            return 'Focus Elixir is already active';
+          updatedPlayer = prevPlayer.activatePill(
+            'Focus Elixir',
+            itemName,
+            const Duration(hours: 2),
+          );
 
         case 'Spirit Stone Tonic':
-          if (prevPlayer.isPillActive('Spirit Stone Tonic')) return 'Spirit Stone Tonic is already active';
-          updatedPlayer = prevPlayer.activatePill('Spirit Stone Tonic', itemName, const Duration(hours: 1));
+          if (prevPlayer.isPillActive('Spirit Stone Tonic'))
+            return 'Spirit Stone Tonic is already active';
+          updatedPlayer = prevPlayer.activatePill(
+            'Spirit Stone Tonic',
+            itemName,
+            const Duration(hours: 1),
+          );
 
         case 'Qi Surge Pill':
-          if (prevPlayer.isPillActive('Qi Surge Pill')) return 'Qi Surge Pill is already active';
+          if (prevPlayer.isPillActive('Qi Surge Pill'))
+            return 'Qi Surge Pill is already active';
           updatedPlayer = prevPlayer.activateQiSurge();
 
         case 'Durability Kit':
@@ -579,6 +668,7 @@ class GameService {
         originPlatform: originPlatform,
       );
     } catch (e) {
+      debugPrint('[GameService.updatePlayer] SAVE FAILED: $e');
       playerNotifier.value = prevPlayer;
       errorNotifier.value = 'Failed to save profile. Try again.';
     }
@@ -623,7 +713,7 @@ class GameService {
     } else {
       newCosmetics[category] = itemName;
     }
-    
+
     final updatedPlayer = prevPlayer.copyWith(equippedCosmetics: newCosmetics);
     playerNotifier.value = updatedPlayer;
 
@@ -642,7 +732,13 @@ class GameService {
     if (!_hasSession) return;
     final prevPlayer = playerNotifier.value;
 
-    var updatedPlayer = _awardQiAndStones(prevPlayer, xpReward, 0, classTag: classTag, isQuestReward: true);
+    var updatedPlayer = _awardQiAndStones(
+      prevPlayer,
+      xpReward,
+      0,
+      classTag: classTag,
+      isQuestReward: true,
+    );
     // Consume Qi Surge after multiplier applied — rollback to prevPlayer preserves it
     if (prevPlayer.isPillActive('Qi Surge Pill')) {
       final cleanedPills = Map<String, String>.from(updatedPlayer.activePills)
@@ -665,7 +761,10 @@ class GameService {
     }
 
     final newAchievements = <String>[];
-    updatedPlayer = _checkAndUnlockAchievements(updatedPlayer, newUnlocks: newAchievements);
+    updatedPlayer = _checkAndUnlockAchievements(
+      updatedPlayer,
+      newUnlocks: newAchievements,
+    );
     playerNotifier.value = updatedPlayer;
 
     try {
@@ -875,7 +974,9 @@ class GameService {
     if (expired.isEmpty) return;
 
     final expiredIds = expired.map((q) => q.id).toSet();
-    var updatedQuests = allQuests.where((q) => !expiredIds.contains(q.id)).toList();
+    var updatedQuests = allQuests
+        .where((q) => !expiredIds.contains(q.id))
+        .toList();
     var updatedPlayer = playerNotifier.value;
 
     for (final quest in expired) {
@@ -903,7 +1004,8 @@ class GameService {
         }
       }
     } catch (_) {
-      errorNotifier.value = 'Failed to process expired quests. Check your connection.';
+      errorNotifier.value =
+          'Failed to process expired quests. Check your connection.';
     }
   }
 
@@ -948,14 +1050,17 @@ class GameService {
     // 3/day client-side rate limit
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final todayCount = prNotifier.value
-        .where((pr) {
-          final prDay = DateTime(pr.createdAt.year, pr.createdAt.month, pr.createdAt.day);
-          return prDay == today;
-        })
-        .length;
+    final todayCount = prNotifier.value.where((pr) {
+      final prDay = DateTime(
+        pr.createdAt.year,
+        pr.createdAt.month,
+        pr.createdAt.day,
+      );
+      return prDay == today;
+    }).length;
     if (todayCount >= 3) {
-      errorNotifier.value = 'You can log up to 3 PRs per day. Come back tomorrow.';
+      errorNotifier.value =
+          'You can log up to 3 PRs per day. Come back tomorrow.';
       return false;
     }
 
@@ -1001,7 +1106,9 @@ class GameService {
         guestId,
         DateTime.now().toIso8601String().substring(0, 10),
       );
-      final notifications = await LocalStorageService.loadNotifications(guestId);
+      final notifications = await LocalStorageService.loadNotifications(
+        guestId,
+      );
       final prs = await LocalStorageService.loadPersonalRecords(guestId);
 
       // Write to Supabase under the real auth ID
@@ -1009,7 +1116,9 @@ class GameService {
         await SupabaseService.saveProfile(
           authId,
           profile.player,
-          checkinDate: profile.checkedInDate.isNotEmpty ? profile.checkedInDate : null,
+          checkinDate: profile.checkedInDate.isNotEmpty
+              ? profile.checkedInDate
+              : null,
           onboardingComplete: true,
           originPlatform: 'flutter',
         );
@@ -1022,7 +1131,11 @@ class GameService {
         await SupabaseService.saveGuildBoard(authId, guildBoard, today);
       }
       for (final notif in notifications) {
-        await SupabaseService.addNotification(authId, notif.message, notif.type);
+        await SupabaseService.addNotification(
+          authId,
+          notif.message,
+          notif.type,
+        );
       }
       for (final pr in prs) {
         await SupabaseService.addPersonalRecord(
@@ -1121,7 +1234,10 @@ class GameService {
   /// Returns updated PlayerData with unlocked achievements, Rep, and titles applied.
   /// Newly unlocked IDs are collected in [newUnlocks] so callers can fire
   /// notifications AFTER the Supabase write succeeds.
-  PlayerData _checkAndUnlockAchievements(PlayerData player, {List<String>? newUnlocks}) {
+  PlayerData _checkAndUnlockAchievements(
+    PlayerData player, {
+    List<String>? newUnlocks,
+  }) {
     var updated = player;
     final achievements = Map<String, String>.from(updated.achievements);
     final now = DateTime.now().toUtc().toIso8601String();
@@ -1133,17 +1249,22 @@ class GameService {
       achievements[id] = now;
       newUnlocks?.add(id);
       if (a.spiritStoneReward > 0) {
-        updated = updated.copyWith(achievements: achievements).addSpiritStones(a.spiritStoneReward);
+        updated = updated
+            .copyWith(achievements: achievements)
+            .addSpiritStones(a.spiritStoneReward);
       }
       if (a.titleReward != null) {
-        updated = updated.copyWith(title: a.titleReward, achievements: achievements);
+        updated = updated.copyWith(
+          title: a.titleReward,
+          achievements: achievements,
+        );
       }
     }
 
     // ── Consistency (streak) ──────────────────────────────
-    if (updated.daoHeartStreak >= 1)   unlock('first_step');
-    if (updated.daoHeartStreak >= 7)   unlock('the_consistent');
-    if (updated.daoHeartStreak >= 30)  unlock('unwavering');
+    if (updated.daoHeartStreak >= 1) unlock('first_step');
+    if (updated.daoHeartStreak >= 7) unlock('the_consistent');
+    if (updated.daoHeartStreak >= 30) unlock('unwavering');
     if (updated.daoHeartStreak >= 100) unlock('the_relentless');
     if (updated.daoHeartStreak >= 365) unlock('ascendant');
 
@@ -1152,11 +1273,11 @@ class GameService {
     if (updated.level >= 25) unlock('level_25');
 
     // ── Quests ────────────────────────────────────────────
-    if (updated.trialsCompleted >= 1)  unlock('quest_taker');
+    if (updated.trialsCompleted >= 1) unlock('quest_taker');
     if (updated.trialsCompleted >= 50) unlock('grinder');
 
     // ── Combat ────────────────────────────────────────────
-    if (updated.monstersKilled >= 1)  unlock('first_blood');
+    if (updated.monstersKilled >= 1) unlock('first_blood');
     if (updated.monstersKilled >= 10) unlock('monster_slayer');
 
     // ── Knowledge ─────────────────────────────────────────
@@ -1195,10 +1316,12 @@ class GameService {
 
   /// Narrative message for Dao Heart state transitions.
   String _daoHeartTransitionMessage(String state) => switch (state) {
-    'Steady'     => '"Your Dao Heart steadies. +5% Qi."',
-    'Firm'       => '"Your Dao Heart grows firm. Lesser demons dare not approach. +10% Qi."',
+    'Steady' => '"Your Dao Heart steadies. +5% Qi."',
+    'Firm' =>
+      '"Your Dao Heart grows firm. Lesser demons dare not approach. +10% Qi."',
     'Unyielding' => '"Your Dao Heart is unyielding. +15% Qi."',
-    'Immovable'  => '"Your Dao Heart is immovable. Immune to minor Qi Deviation. +20% Qi."',
-    _            => '"Your Dao Heart flickers."',
+    'Immovable' =>
+      '"Your Dao Heart is immovable. Immune to minor Qi Deviation. +20% Qi."',
+    _ => '"Your Dao Heart flickers."',
   };
 }
