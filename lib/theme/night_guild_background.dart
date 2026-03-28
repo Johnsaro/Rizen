@@ -60,6 +60,8 @@ class CultivationBackground extends StatelessWidget {
                   _getSectAsset(effectiveTime),
                   key: ValueKey(effectiveTime),
                   fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
                   // Light mode gets a very subtle ink-wash effect (0.05)
                   // Void mode gets the standard atmospheric depth (0.4)
                   opacity: AlwaysStoppedAnimation(isDark ? 0.4 : 0.05),

@@ -404,8 +404,15 @@ class _MerchantLogScreenState extends State<MerchantLogScreen> {
                         color: cs.onPrimary,
                       ),
                     )
-                  : Text('LOG EXPENSE', style: GoogleFonts.cinzel(
-                      fontWeight: FontWeight.w900, fontSize: 13)),
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_circle_outline, size: 18, color: cs.onPrimary),
+                        const SizedBox(width: 8),
+                        Text('LOG EXPENSE', style: GoogleFonts.cinzel(
+                            fontWeight: FontWeight.w900, fontSize: 13)),
+                      ],
+                    ),
             ),
           ),
         ],
@@ -426,10 +433,10 @@ class _MerchantLogScreenState extends State<MerchantLogScreen> {
         children: [
           Text(
             'PHP',
-            style: GoogleFonts.jetBrainsMono(
+            style: GoogleFonts.cinzel(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: cs.onSurface.withValues(alpha: 0.4),
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFFD4AF37).withValues(alpha: 0.8), // Gold accent
             ),
           ),
           const SizedBox(width: 12),
@@ -542,7 +549,7 @@ class _MerchantLogScreenState extends State<MerchantLogScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.camera_alt_outlined, size: 18, color: cs.onSurface.withValues(alpha: 0.6)),
+                Icon(Icons.receipt_outlined, size: 18, color: cs.onSurface.withValues(alpha: 0.6)),
                 const SizedBox(width: 8),
                 Text(
                   _receiptPhoto != null ? 'Receipt attached' : 'Add receipt',
@@ -643,26 +650,41 @@ class _MerchantLogScreenState extends State<MerchantLogScreen> {
             SizedBox(
               width: double.infinity,
               height: 44,
-              child: TextButton(
-                onPressed: _isShredding ? null : _shredLedger,
-                child: _isShredding
-                    ? SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: cs.error,
+              child: GestureDetector(
+                onTap: _isShredding ? null : _shredLedger,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: cs.error.withValues(alpha: 0.1),
+                    border: Border.all(color: cs.error.withValues(alpha: 0.5)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: _isShredding
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: cs.error,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.local_fire_department_outlined, size: 18, color: cs.error),
+                            const SizedBox(width: 8),
+                            Text(
+                              'SHRED THE LEDGER',
+                              style: GoogleFonts.cinzel(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: cs.error,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ],
                         ),
-                      )
-                    : Text(
-                        'SHRED THE LEDGER',
-                        style: GoogleFonts.cinzel(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: cs.error,
-                          letterSpacing: 2,
-                        ),
-                      ),
+                ),
               ),
             ),
           const SizedBox(height: 24),

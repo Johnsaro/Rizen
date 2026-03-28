@@ -104,11 +104,10 @@ class GameService {
               'name="$resolvedName" mainPath="$resolvedPath"',
             );
             final webPlayer = needsAutoComplete
-                ? result!.player // keep existing data, just mark complete
+                ? result.player // keep existing data, just mark complete
                 : PlayerData(
                     name: resolvedName,
                     mainPath: resolvedPath,
-                    sidePath: 'Shadow Arts',
                   );
             await SupabaseService.saveProfile(
               _userId,
@@ -598,8 +597,9 @@ class GameService {
               .copyWith(talismans: (prevPlayer.talismans + 1).clamp(0, 3));
 
         case 'Focus Elixir':
-          if (prevPlayer.isPillActive('Focus Elixir'))
+          if (prevPlayer.isPillActive('Focus Elixir')) {
             return 'Focus Elixir is already active';
+          }
           updatedPlayer = prevPlayer.activatePill(
             'Focus Elixir',
             itemName,
@@ -607,8 +607,9 @@ class GameService {
           );
 
         case 'Spirit Stone Tonic':
-          if (prevPlayer.isPillActive('Spirit Stone Tonic'))
+          if (prevPlayer.isPillActive('Spirit Stone Tonic')) {
             return 'Spirit Stone Tonic is already active';
+          }
           updatedPlayer = prevPlayer.activatePill(
             'Spirit Stone Tonic',
             itemName,
@@ -616,8 +617,9 @@ class GameService {
           );
 
         case 'Qi Surge Pill':
-          if (prevPlayer.isPillActive('Qi Surge Pill'))
+          if (prevPlayer.isPillActive('Qi Surge Pill')) {
             return 'Qi Surge Pill is already active';
+          }
           updatedPlayer = prevPlayer.activateQiSurge();
 
         case 'Durability Kit':

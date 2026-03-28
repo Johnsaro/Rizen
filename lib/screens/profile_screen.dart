@@ -6,6 +6,7 @@ import '../models/achievement.dart';
 import '../theme/night_guild_background.dart';
 import 'settings_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../widgets/glass_card.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -19,95 +20,87 @@ class ProfileScreen extends StatelessWidget {
       builder: (_, player, _) => Scaffold(
         backgroundColor: Colors.transparent,
         body: CultivationBackground(
-          child: SafeArea(
-            child: Column(
-              children: [
-                _buildTopBar(context, cs),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildAvatarCard(
-                          context,
-                          cs,
-                          player,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSection(
-                          'DAO PATHS',
-                          _buildClassTracks(cs, player),
-                          cs,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSection(
-                          'DAO PROGRESS',
-                          _buildCoreStats(cs, player),
-                          cs,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSection(
-                          'DAO HEART',
-                          _buildDaoHeartSection(cs, player),
-                          cs,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSection(
-                          'SPIRITUAL ARTIFACTS',
-                          _buildArsenal(cs, player),
-                          cs,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSection(
-                          '★  FEATURED MERIT',
-                          _buildFeaturedAchievement(context, cs, player),
-                          cs,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSection('HEAVENLY MERITS', _buildBadges(context, cs, player), cs),
-                      ],
-                    ),
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 340.0,
+                backgroundColor: Colors.transparent,
+                pinned: true,
+                stretch: true,
+                elevation: 0,
+                title: Text(
+                  'IDENTITY',
+                  style: GoogleFonts.cinzel(
+                    color: cs.onSurface,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
                   ),
                 ),
-              ],
-            ),
+                actions: [
+                  IconButton(
+                    icon: Icon(Icons.settings_outlined, color: cs.onSurface.withValues(alpha: 0.8)),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                flexibleSpace: FlexibleSpaceBar(
+                  stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Dark gradient overlay for readability of pinned title
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.6),
+                              Colors.transparent,
+                              Colors.transparent,
+                            ],
+                            stops: const [0.0, 0.4, 1.0],
+                          ),
+                        ),
+                      ),
+                      SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 60.0),
+                          child: _buildAvatarCard(context, cs, player),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _buildSection('DAO PATHS', _buildClassTracks(cs, player), cs),
+                    const SizedBox(height: 16),
+                    _buildSection('DAO PROGRESS', _buildCoreStats(cs, player), cs),
+                    const SizedBox(height: 16),
+                    _buildSection('DAO HEART', _buildDaoHeartSection(cs, player), cs),
+                    const SizedBox(height: 16),
+                    _buildSection('SPIRITUAL ARTIFACTS', _buildArsenal(cs, player), cs),
+                    const SizedBox(height: 16),
+                    _buildSection('★  FEATURED MERIT', _buildFeaturedAchievement(context, cs, player), cs),
+                    const SizedBox(height: 16),
+                    _buildSection('HEAVENLY MERITS', _buildBadges(context, cs, player), cs),
+                  ]),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTopBar(BuildContext context, ColorScheme cs) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'IDENTITY',
-            style: TextStyle(
-              color: cs.onSurface,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2,
-            ),
-          ),
-          GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
-            child: Icon(
-              Icons.settings_outlined,
-              color: (cs.brightness == Brightness.dark ? cs.onSurface.withValues(alpha: 0.5) : const Color(0xFF4B5563)),
-              size: 22,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Removed _buildTopBar in favor of SliverAppBar
 
   Widget _buildAvatarCard(
     BuildContext context,
@@ -158,9 +151,17 @@ class ProfileScreen extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      decoration: decoration,
-      child: Column(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: decoration.boxShadow,
+      ),
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        borderRadius: 12.0,
+        backgroundColor: cs.surface.withValues(alpha: 0.1),
+        borderColor: decoration.border?.top.color ?? cs.outline,
+        blurRadius: 15.0,
+        child: Column(
         children: [
           Stack(
             alignment: Alignment.center,
@@ -242,6 +243,7 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -556,14 +558,12 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
+        GlassCard(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: cs.outline, width: 1),
-          ),
+          borderRadius: 12.0,
+          backgroundColor: cs.surface.withValues(alpha: 0.3),
+          borderColor: cs.primary.withValues(alpha: 0.25),
+          blurRadius: 10.0,
           child: content,
         ),
       ],
@@ -575,25 +575,12 @@ class ProfileScreen extends StatelessWidget {
     final mainMax = player.pathMaxQi(player.mainPath);
     final mainLv = player.pathLevel[player.mainPath] ?? 1;
 
-    final sideXp = player.pathQi[player.sidePath] ?? 0.0;
-    final sideMax = player.pathMaxQi(player.sidePath);
-    final sideLv = player.pathLevel[player.sidePath] ?? 1;
-
     return Column(
       children: [
         _classTrackRow(
           player.mainPath,
-          true,
           mainMax > 0 ? mainXp / mainMax : 0.0,
           mainLv,
-          cs,
-        ),
-        const SizedBox(height: 12),
-        _classTrackRow(
-          player.sidePath,
-          false,
-          sideMax > 0 ? sideXp / sideMax : 0.0,
-          sideLv,
           cs,
         ),
       ],
@@ -602,7 +589,6 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _classTrackRow(
     String className,
-    bool isMain,
     double progress,
     int level,
     ColorScheme cs,
@@ -613,38 +599,12 @@ class ProfileScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text(
-                    className,
-                    style: TextStyle(
-                      color: (cs.brightness == Brightness.dark ? cs.onSurface.withValues(alpha: 0.7) : const Color(0xFF4B5563)),
-                      fontSize: 13,
-                    ),
-                  ),
-                  if (isMain) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cs.primary.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: Text(
-                        'MAIN',
-                        style: TextStyle(
-                          color: cs.secondary,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+              Text(
+                className,
+                style: TextStyle(
+                  color: (cs.brightness == Brightness.dark ? cs.onSurface.withValues(alpha: 0.7) : const Color(0xFF4B5563)),
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 6),
               ClipRRect(
@@ -672,23 +632,33 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  // Top 3 stats per path — (label, base multiplier).
+  // Higher multiplier = scales faster with level.
+  static const _pathCoreStats = <String, List<(String, double)>>{
+    'Shadow Arts':        [('Recon', 0.9),       ('Exploit', 0.8),     ('Stealth', 0.7)],
+    'Realm Architect':    [('Logic', 0.9),       ('Math', 0.7),        ('Speed', 0.8)],
+    'Formation Master':   [('Frontend', 0.9),    ('Backend', 0.7),     ('Design', 0.8)],
+    'Artifact Refiner':   [('Performance', 0.9), ('UI Polish', 0.8),   ('Cross-Platform', 0.7)],
+    'Body Cultivator':    [('Strength', 0.9),    ('Endurance', 0.8),   ('Discipline', 0.7)],
+    'Scripture Keeper':   [('Focus', 0.9),       ('Retention', 0.8),   ('Analysis', 0.7)],
+    'Inscription Master': [('Creativity', 0.9),  ('Craft', 0.8),      ('Flow', 0.7)],
+  };
+
+  static const _defaultCoreStats = [('Adapt', 0.8), ('Focus', 0.7), ('Speed', 0.6)];
+
   Widget _buildCoreStats(ColorScheme cs, PlayerData player) {
-    final devLevel = player.pathLevel[player.mainPath] ?? 1;
-    final secLevel = player.pathLevel[player.sidePath] ?? 1;
+    final mainLevel = player.pathLevel[player.mainPath] ?? 1;
+    final stats = _pathCoreStats[player.mainPath] ?? _defaultCoreStats;
 
-    final problemSolving = (devLevel * 10 / 5).round().clamp(0, 10);
-    final recon = (secLevel * 10 / 5).round().clamp(0, 10);
-    final exploitation = (secLevel * 10 / 5).round().clamp(0, 10);
+    final rows = <Widget>[];
+    for (int i = 0; i < stats.length; i++) {
+      if (i > 0) rows.add(const SizedBox(height: 10));
+      final (label, multiplier) = stats[i];
+      final value = (mainLevel * multiplier * 10 / 5).round().clamp(0, 10);
+      rows.add(_statRow(label, value, 10, cs));
+    }
 
-    return Column(
-      children: [
-        _statRow('Problem Solving', problemSolving, 10, cs),
-        const SizedBox(height: 10),
-        _statRow('Recon', recon, 10, cs),
-        const SizedBox(height: 10),
-        _statRow('Exploitation', exploitation, 10, cs),
-      ],
-    );
+    return Column(children: rows);
   }
 
   Widget _statRow(String label, int value, int max, ColorScheme cs) {
@@ -968,26 +938,28 @@ class ProfileScreen extends StatelessWidget {
             width: 70,
             child: Column(
               children: [
-                Container(
+                SizedBox(
                   width: 44,
                   height: 44,
-                  decoration: BoxDecoration(
-                    color: unlocked
+                  child: GlassCard(
+                    padding: EdgeInsets.zero,
+                    borderRadius: 10.0,
+                    backgroundColor: unlocked
                         ? cs.primary.withValues(alpha: 0.15)
-                        : cs.outline.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: unlocked
-                          ? cs.primary.withValues(alpha: 0.4)
-                          : cs.outline.withValues(alpha: 0.4),
+                        : cs.outline.withValues(alpha: 0.2),
+                    borderColor: unlocked
+                        ? cs.primary.withValues(alpha: 0.4)
+                        : cs.outline.withValues(alpha: 0.4),
+                    blurRadius: 8.0,
+                    child: Center(
+                      child: Icon(
+                        unlocked ? a.icon : (a.comingSoon ? Icons.lock_clock : Icons.help_outline),
+                        color: unlocked
+                            ? cs.secondary
+                            : (cs.brightness == Brightness.dark ? cs.onSurface.withValues(alpha: 0.2) : const Color(0xFF4B5563)),
+                        size: 22,
+                      ),
                     ),
-                  ),
-                  child: Icon(
-                    unlocked ? a.icon : (a.comingSoon ? Icons.lock_clock : Icons.help_outline),
-                    color: unlocked
-                        ? cs.secondary
-                        : (cs.brightness == Brightness.dark ? cs.onSurface.withValues(alpha: 0.2) : const Color(0xFF4B5563)),
-                    size: 22,
                   ),
                 ),
                 const SizedBox(height: 4),

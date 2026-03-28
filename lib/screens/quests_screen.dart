@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../app_state.dart';
@@ -5,6 +6,7 @@ import '../models/quest.dart';
 import '../theme/rank_colors.dart' as rc;
 import '../widgets/floating_xp.dart';
 import '../widgets/nag_prompt.dart';
+import '../widgets/glass_card.dart';
 
 class QuestsScreen extends StatefulWidget {
   const QuestsScreen({super.key});
@@ -128,27 +130,25 @@ class _QuestsScreenState extends State<QuestsScreen> {
           return Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _selectedTab = i),
-              child: Container(
+              child: GlassCard(
                 margin: EdgeInsets.only(right: i < _tabs.length - 1 ? 8 : 0),
                 padding: const EdgeInsets.symmetric(vertical: 9),
-                decoration: BoxDecoration(
-                  color: selected ? cs.primary : cs.surface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: selected ? cs.primary : cs.outline,
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  _tabs[i],
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.cinzel(
-                    color: selected
-                        ? cs.onPrimary
-                        : (cs.brightness == Brightness.dark ? cs.onSurface.withValues(alpha: 0.4) : const Color(0xFF4B5563)),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
+                borderRadius: 8.0,
+                backgroundColor: selected ? cs.primary.withValues(alpha: 0.25) : cs.surface.withValues(alpha: 0.4),
+                borderColor: selected ? cs.primary.withValues(alpha: 0.8) : cs.outline.withValues(alpha: 0.5),
+                blurRadius: 10.0,
+                child: Center(
+                  child: Text(
+                    _tabs[i],
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.cinzel(
+                      color: selected
+                          ? cs.primary
+                          : (cs.brightness == Brightness.dark ? cs.onSurface.withValues(alpha: 0.5) : const Color(0xFF4B5563)),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.0,
+                    ),
                   ),
                 ),
               ),
@@ -167,23 +167,27 @@ class _QuestsScreenState extends State<QuestsScreen> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.map_outlined,
-                  size: 48, color: (cs.brightness == Brightness.dark ? cs.onSurface.withValues(alpha: 0.1) : const Color(0xFF4B5563))),
-              const SizedBox(height: 16),
-              Text(
-                'No ${_tabs[_selectedTab].toLowerCase()} trials available.\nTalk to the Dao Guide.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: (cs.brightness == Brightness.dark ? cs.onSurface.withValues(alpha: 0.4) : const Color(0xFF4B5563)),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  height: 1.5,
+          child: Opacity(
+            opacity: 0.4,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.history_edu,
+                    size: 80, color: cs.onSurface),
+                const SizedBox(height: 24),
+                Text(
+                  'The Heavens are quiet today.\nNo ${_tabs[_selectedTab].toLowerCase()} trials available.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cinzel(
+                    color: cs.onSurface,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    height: 1.5,
+                    letterSpacing: 1.0,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -203,22 +207,49 @@ class _QuestsScreenState extends State<QuestsScreen> {
     final completed = quest.isCompleted;
     final deadlineInfo = _deadlineInfo(quest);
 
+    final isHighRank = ['S', 'SS', 'SSS'].contains(quest.rank);
+
     return Opacity(
       opacity: completed ? 0.45 : 1.0,
       child: Container(
         decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: completed ? cs.outline : rankColor.withValues(alpha: 0.3),
-            width: 1,
-          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isHighRank && !completed
+              ? [
+                  BoxShadow(
+                    color: rankColor.withValues(alpha: 0.25),
+                    blurRadius: 15,
+                    spreadRadius: 2,
+                  )
+                ]
+              : null,
         ),
-        // Clip so the left accent bar respects the border radius
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: IntrinsicHeight(
-            child: Row(
+          borderRadius: BorderRadius.circular(12),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.all(1.5),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: (!completed && isHighRank)
+                    ? SweepGradient(
+                        colors: [
+                          rankColor.withValues(alpha: 0.1),
+                          rankColor,
+                          rankColor.withValues(alpha: 0.1),
+                        ],
+                      )
+                    : null,
+                color: (!completed && isHighRank) ? null : cs.outline.withValues(alpha: completed ? 0.2 : 0.6),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cs.surface.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: IntrinsicHeight(
+                  child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Left rank color accent bar
@@ -417,6 +448,9 @@ class _QuestsScreenState extends State<QuestsScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+              ),
             ),
           ),
         ),

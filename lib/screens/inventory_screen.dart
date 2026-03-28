@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../models/player_data.dart';
 import '../theme/rank_colors.dart';
 import '../theme/night_guild_background.dart';
+import '../widgets/glass_card.dart';
 import 'flashcard/flashcard_screen.dart';
 
 // Catalog of all obtainable artifacts — icon, path, rank, combat perk.
@@ -146,21 +147,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
         return Expanded(
           child: GestureDetector(
             onTap: () => setState(() => _selectedTab = i),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: selected ? cs.primary : cs.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: cs.outline),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                tabs[i],
-                style: TextStyle(
-                  color: selected ? Colors.black : cs.onSurface,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: GlassCard(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                borderRadius: 8.0,
+                backgroundColor: selected ? cs.primary.withValues(alpha: 0.15) : cs.surface.withValues(alpha: 0.2),
+                borderColor: selected ? cs.primary.withValues(alpha: 0.5) : cs.outline.withValues(alpha: 0.3),
+                blurRadius: 8.0,
+                child: Center(
+                  child: Text(
+                    tabs[i],
+                    style: TextStyle(
+                      color: selected ? cs.secondary : cs.onSurface.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -232,15 +235,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
     String? perk,
     Widget? warning,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outline),
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassCard(
+        padding: const EdgeInsets.all(14),
+        borderRadius: 12.0,
+        backgroundColor: cs.surface.withValues(alpha: 0.3),
+        borderColor: cs.outline.withValues(alpha: 0.3),
+        blurRadius: 10.0,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -291,6 +294,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           const SizedBox(height: 12),
           Row(children: buttons),
         ],
+      ),
       ),
     );
   }
@@ -568,18 +572,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ...items.map((name) {
                 final meta = _cosmeticCatalog[name]!;
                 final isEquipped = player.equippedCosmetics[cat] == name;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isEquipped ? cs.secondary : cs.outline,
-                      width: isEquipped ? 2 : 1,
-                    ),
-                  ),
-                  child: Row(
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: GlassCard(
+                    padding: const EdgeInsets.all(14),
+                    borderRadius: 12.0,
+                    backgroundColor: isEquipped ? cs.secondary.withValues(alpha: 0.05) : cs.surface.withValues(alpha: 0.3),
+                    borderColor: isEquipped ? cs.secondary.withValues(alpha: 0.5) : cs.outline.withValues(alpha: 0.3),
+                    blurRadius: 10.0,
+                    child: Row(
                     children: [
                       Container(
                         width: 44,
@@ -621,6 +622,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             : () => _handleEquipCosmetic(cat, isEquipped ? '' : name),
                       ),
                     ],
+                  ),
                   ),
                 );
               }),

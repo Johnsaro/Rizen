@@ -87,7 +87,7 @@ class GuildMasterService {
         .join('\n');
 
     return '''You are the Guild Master of Rizen — a real-life RPG.
-The player is ${livePlayer.name}, Level ${livePlayer.level}, ${livePlayer.mainPath} / ${livePlayer.sidePath}.
+The player is ${livePlayer.name}, Level ${livePlayer.level}, ${livePlayer.mainPath}.
 Their active quests:
 ${activeQuests.isEmpty ? '  (none)' : activeQuests}
 

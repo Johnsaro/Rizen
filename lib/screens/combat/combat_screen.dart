@@ -11,6 +11,7 @@ import 'countdown_timer.dart';
 import 'monster_hp_bar.dart';
 import 'player_hp_bar.dart';
 import 'question_card.dart';
+import '../../widgets/glass_card.dart';
 
 class CombatScreen extends StatefulWidget {
   final String monsterName;
@@ -87,7 +88,6 @@ class _CombatScreenState extends State<CombatScreen> {
     final filtered = CombatQuestionBank.all
         .where((q) =>
             q.classTag == player.mainPath ||
-            q.classTag == player.sidePath ||
             q.classTag == 'Any')
         .toList();
     return filtered.isNotEmpty ? filtered : CombatQuestionBank.all;
@@ -381,16 +381,15 @@ class _CombatScreenState extends State<CombatScreen> {
     return Container(
       color: Colors.black.withValues(alpha: 0.75),
       child: Center(
-        child: Container(
-          margin: const EdgeInsets.all(32),
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(16),
-            border:
-                Border.all(color: color.withValues(alpha: 0.5), width: 1),
-          ),
-          child: Column(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: GlassCard(
+            padding: const EdgeInsets.all(28),
+            borderRadius: 16.0,
+            backgroundColor: cs.surface.withValues(alpha: 0.3),
+            borderColor: color.withValues(alpha: 0.5),
+            blurRadius: 15.0,
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, color: color, size: 52),
@@ -463,6 +462,7 @@ class _CombatScreenState extends State<CombatScreen> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

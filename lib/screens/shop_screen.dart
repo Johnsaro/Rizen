@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../models/player_data.dart';
 import '../theme/night_guild_background.dart';
 import '../theme/rank_colors.dart';
+import '../widgets/glass_card.dart';
 
 // ── Data models ───────────────────────────────────────────
 
@@ -426,24 +427,25 @@ class _ShopScreenState extends State<ShopScreen> {
           final selected = _selectedTab == i;
           return GestureDetector(
             onTap: () => setState(() => _selectedTab = i),
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: selected ? cs.primary : cs.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: selected ? cs.primary : cs.outline),
-              ),
-              child: Center(
-                child: Text(
-                  _tabs[i],
-                  style: TextStyle(
-                    color: selected
-                        ? Colors.white
-                        : cs.onSurface.withValues(alpha: 0.45),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.3,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GlassCard(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                borderRadius: 8.0,
+                backgroundColor: selected ? cs.primary.withValues(alpha: 0.15) : cs.surface.withValues(alpha: 0.2),
+                borderColor: selected ? cs.primary.withValues(alpha: 0.5) : cs.outline.withValues(alpha: 0.3),
+                blurRadius: 8.0,
+                child: Center(
+                  child: Text(
+                    _tabs[i],
+                    style: TextStyle(
+                      color: selected
+                          ? cs.secondary
+                          : cs.onSurface.withValues(alpha: 0.7),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                    ),
                   ),
                 ),
               ),
@@ -484,15 +486,15 @@ class _ShopScreenState extends State<ShopScreen> {
 
   Widget _arsenalCard(BuildContext context, ColorScheme cs, _ArsenalItem item) {
     final rc = rankColor(item.rank);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outline),
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassCard(
+        padding: const EdgeInsets.all(14),
+        borderRadius: 12.0,
+        backgroundColor: cs.surface.withValues(alpha: 0.3),
+        borderColor: cs.outline.withValues(alpha: 0.3),
+        blurRadius: 10.0,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -606,6 +608,7 @@ class _ShopScreenState extends State<ShopScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -624,19 +627,17 @@ class _ShopScreenState extends State<ShopScreen> {
             final isDeferred = _deferredConsumables.contains(item.name);
             final isActive = player.isPillActive(item.name);
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: cs.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isActive
-                      ? cs.tertiary.withValues(alpha: 0.5)
-                      : cs.outline,
-                ),
-              ),
-              child: Row(
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: GlassCard(
+                padding: const EdgeInsets.all(14),
+                borderRadius: 12.0,
+                backgroundColor: cs.surface.withValues(alpha: 0.3),
+                borderColor: isActive
+                    ? cs.tertiary.withValues(alpha: 0.5)
+                    : cs.outline.withValues(alpha: 0.3),
+                blurRadius: 10.0,
+                child: Row(
                 children: [
                   // Icon with quantity badge
                   Stack(
@@ -807,6 +808,7 @@ class _ShopScreenState extends State<ShopScreen> {
                   ),
                 ],
               ),
+              ),
             );
           },
         );
@@ -853,15 +855,15 @@ class _ShopScreenState extends State<ShopScreen> {
       itemBuilder: (_, i) {
         final item = _knowledge[i];
         final rc = rankColor(item.rank);
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: cs.outline),
-          ),
-          child: Column(
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: GlassCard(
+            padding: const EdgeInsets.all(14),
+            borderRadius: 12.0,
+            backgroundColor: cs.surface.withValues(alpha: 0.3),
+            borderColor: cs.outline.withValues(alpha: 0.3),
+            blurRadius: 10.0,
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -940,6 +942,7 @@ class _ShopScreenState extends State<ShopScreen> {
               ),
             ],
           ),
+          ),
         );
       },
     );
@@ -959,20 +962,17 @@ class _ShopScreenState extends State<ShopScreen> {
             final isOwned = player.inventory.containsKey(item.name);
             final isEquipped = player.equippedCosmetics[item.category] == item.name;
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isOwned ? cs.primary.withValues(alpha: 0.05) : cs.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isEquipped
-                      ? cs.primary.withValues(alpha: 0.5)
-                      : cs.outline,
-                  width: isEquipped ? 1.5 : 1,
-                ),
-              ),
-              child: Row(
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: GlassCard(
+                padding: const EdgeInsets.all(14),
+                borderRadius: 12.0,
+                backgroundColor: isOwned ? cs.primary.withValues(alpha: 0.05) : cs.surface.withValues(alpha: 0.3),
+                borderColor: isEquipped
+                    ? cs.primary.withValues(alpha: 0.5)
+                    : cs.outline.withValues(alpha: 0.3),
+                blurRadius: 10.0,
+                child: Row(
                 children: [
                   Container(
                     width: 44,
@@ -1065,6 +1065,7 @@ class _ShopScreenState extends State<ShopScreen> {
                     ],
                   ),
                 ],
+              ),
               ),
             );
           },

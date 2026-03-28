@@ -177,7 +177,6 @@ class PersonalRecordsScreen extends StatelessWidget {
 
   Widget _buildStatsOverview(ColorScheme cs, PlayerData player) {
     final mainLv = player.pathLevel[player.mainPath] ?? 1;
-    final sideLv = player.pathLevel[player.sidePath] ?? 1;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -191,8 +190,6 @@ class PersonalRecordsScreen extends StatelessWidget {
           _overviewRow(cs, 'Cultivation', CultivationRealms.shortDisplayFor(player.level)),
           const SizedBox(height: 10),
           _overviewRow(cs, _displayPathName(player.mainPath), 'Lv $mainLv', badge: 'PRIMARY'),
-          const SizedBox(height: 10),
-          _overviewRow(cs, _displayPathName(player.sidePath), 'Lv $sideLv'),
           const SizedBox(height: 10),
           _overviewRow(cs, 'Heavenly Merits', '${player.achievements.length}'),
         ],

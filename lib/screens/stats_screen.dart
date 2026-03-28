@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../models/player_data.dart' show PlayerData, CultivationRealms;
 import '../theme/night_guild_background.dart';
 import '../widgets/radar_chart.dart';
+import '../widgets/glass_card.dart';
 
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
@@ -17,47 +18,42 @@ class StatsScreen extends StatelessWidget {
       builder: (_, player, _) => Scaffold(
         backgroundColor: Colors.transparent,
         body: CultivationBackground(
-          child: SafeArea(
-            child: Column(
-              children: [
-                _buildTopBar(cs),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _sectionLabel('CULTIVATION BASE', cs),
-                        const SizedBox(height: 8),
-                        _buildHunterLicense(cs, player),
-                        const SizedBox(height: 24),
-                        
-                        _sectionLabel('DAO MASTERY', cs),
-                        const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: _buildClassSection('PRIMARY', player.mainPath, true, cs, player)),
-                            const SizedBox(width: 12),
-                            Expanded(child: _buildClassSection('SECONDARY', player.sidePath, false, cs, player)),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
+          child: Column(
+            children: [
+              SafeArea(
+                bottom: false,
+                child: _buildTopBar(cs),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionLabel('CULTIVATION BASE', cs),
+                      const SizedBox(height: 8),
+                      _buildHunterLicense(cs, player),
+                      const SizedBox(height: 24),
+                      
+                      _sectionLabel('DAO MASTERY', cs),
+                      const SizedBox(height: 8),
+                      _buildClassSection('PRIMARY', player.mainPath, cs, player),
+                      const SizedBox(height: 32),
 
-                        _sectionLabel('ENLIGHTENMENT SKILLS', cs),
-                        const SizedBox(height: 16),
-                        _buildRadarChartSection(cs, player),
-                        const SizedBox(height: 32),
+                      _sectionLabel('ENLIGHTENMENT SKILLS', cs),
+                      const SizedBox(height: 16),
+                      _buildRadarChartSection(cs, player),
+                      const SizedBox(height: 32),
 
-                        _sectionLabel('SPIRITUAL ARTIFACTS', cs),
-                        const SizedBox(height: 8),
-                        _buildWeaponGrid(context, cs, player),
-                      ],
-                    ),
+                      _sectionLabel('SPIRITUAL ARTIFACTS', cs),
+                      const SizedBox(height: 8),
+                      _buildWeaponGrid(context, cs, player),
+                      SizedBox(height: MediaQuery.of(context).padding.bottom + 80),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -139,9 +135,17 @@ class StatsScreen extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: decoration,
-      child: Row(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: decoration.boxShadow,
+      ),
+      child: GlassCard(
+        padding: const EdgeInsets.all(20),
+        borderRadius: 16.0,
+        backgroundColor: cs.surface.withValues(alpha: 0.25),
+        borderColor: decoration.border?.top.color ?? cs.primary.withValues(alpha: 0.3),
+        blurRadius: 15.0,
+        child: Row(
         children: [
           // Avatar glowing orb
           Stack(
@@ -286,25 +290,22 @@ class StatsScreen extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
 
-  Widget _buildClassSection(String label, String className, bool isMain, ColorScheme cs, PlayerData player) {
+  Widget _buildClassSection(String label, String className, ColorScheme cs, PlayerData player) {
     final xp = player.pathQi[className] ?? 0.0;
     final max = player.pathMaxQi(className);
     final lv = player.pathLevel[className] ?? 1;
     final progress = max > 0 ? xp / max : 0.0;
 
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isMain ? cs.primary.withValues(alpha: 0.3) : cs.outline,
-          width: isMain ? 1.5 : 1.0,
-        ),
-      ),
+      borderRadius: 12.0,
+      backgroundColor: cs.surface.withValues(alpha: 0.3),
+      borderColor: cs.primary.withValues(alpha: 0.4),
+      blurRadius: 10.0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -314,16 +315,16 @@ class StatsScreen extends StatelessWidget {
               Text(
                 label,
                 style: GoogleFonts.cinzel(
-                  color: isMain ? cs.primary : cs.onSurface.withValues(alpha: 0.4),
+                  color: cs.primary,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
                 ),
               ),
               Icon(
-                isMain ? Icons.stars : Icons.upgrade,
+                Icons.stars,
                 size: 14,
-                color: isMain ? cs.primary : cs.onSurface.withValues(alpha: 0.4),
+                color: cs.primary,
               ),
             ],
           ),
@@ -368,6 +369,9 @@ class StatsScreen extends StatelessWidget {
     'Formation Master':  [('Frontend', 0.9), ('Backend', 0.7), ('Design', 0.8), ('Speed', 0.5)],
     'Artifact Refiner':  [('Performance', 0.9), ('UI Polish', 0.8), ('Cross-Platform', 0.7)],
     'Realm Architect':   [('Logic', 0.9), ('Math', 0.7), ('Assets', 0.6), ('Speed', 0.8)],
+    'Body Cultivator':   [('Strength', 0.9), ('Endurance', 0.8), ('Discipline', 0.7), ('Vitality', 0.6)],
+    'Scripture Keeper':  [('Focus', 0.9), ('Retention', 0.8), ('Analysis', 0.7), ('Comprehension', 0.6)],
+    'Inscription Master':[('Creativity', 0.9), ('Craft', 0.8), ('Flow', 0.7), ('Precision', 0.6)],
   };
 
   static const _defaultStats = <(String, double)>[
@@ -391,14 +395,12 @@ class StatsScreen extends StatelessWidget {
     final renderStats = stats.length >= 3 ? stats : _defaultStats;
 
     return Center(
-      child: Container(
-        width: double.infinity,
+      child: GlassCard(
         padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cs.outline, width: 1),
-        ),
+        borderRadius: 16.0,
+        backgroundColor: cs.surface.withValues(alpha: 0.2),
+        borderColor: cs.primary.withValues(alpha: 0.3),
+        blurRadius: 12.0,
         child: RadarChart(
           stats: renderStats,
           themeColor: cs.primary,
@@ -420,14 +422,12 @@ class StatsScreen extends StatelessWidget {
         .toList();
 
     if (ownedWeapons.isEmpty) {
-      return Container(
-        width: double.infinity,
+      return GlassCard(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: cs.outline, width: 1),
-        ),
+        borderRadius: 12.0,
+        backgroundColor: cs.surface.withValues(alpha: 0.3),
+        borderColor: cs.outline.withValues(alpha: 0.5),
+        blurRadius: 8.0,
         child: Text(
           'Artifact Collection Empty.',
           textAlign: TextAlign.center,
@@ -458,14 +458,8 @@ class StatsScreen extends StatelessWidget {
         final hasNeon = isEquipped && player.equippedCosmetics['Effect'] == 'Neon Arsenal';
 
         return Container(
-          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isEquipped ? cs.primary.withValues(alpha: 0.1) : cs.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: hasNeon ? cs.primary : (isEquipped ? cs.primary.withValues(alpha: 0.5) : cs.outline),
-              width: hasNeon ? 2 : 1,
-            ),
             boxShadow: hasNeon ? [
               BoxShadow(
                 color: cs.primary.withValues(alpha: 0.4),
@@ -474,7 +468,13 @@ class StatsScreen extends StatelessWidget {
               )
             ] : null,
           ),
-          child: Row(
+          child: GlassCard(
+            padding: const EdgeInsets.all(12),
+            borderRadius: 10.0,
+            backgroundColor: isEquipped ? cs.primary.withValues(alpha: 0.15) : cs.surface.withValues(alpha: 0.25),
+            borderColor: hasNeon ? cs.primary : (isEquipped ? cs.primary.withValues(alpha: 0.6) : cs.outline.withValues(alpha: 0.4)),
+            blurRadius: 8.0,
+            child: Row(
             children: [
               Container(
                 width: 36,
@@ -523,6 +523,7 @@ class StatsScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
           ),
         );
       },

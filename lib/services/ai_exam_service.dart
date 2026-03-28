@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
 import '../constants.dart';
@@ -105,8 +106,8 @@ Respond with valid JSON only. No markdown, no code fences.''';
     }
 
     // Debug: print API response details to console
-    print('[ExamService] Status: ${response.statusCode}');
-    print('[ExamService] Body: ${response.body}');
+    debugPrint('[ExamService] Status: ${response.statusCode}');
+    debugPrint('[ExamService] Body: ${response.body}');
 
     if (response.statusCode == 429) {
       throw ExamGenerationException(

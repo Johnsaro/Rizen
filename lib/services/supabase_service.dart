@@ -59,7 +59,6 @@ class SupabaseService {
     final player = PlayerData(
       name: (row['name'] as String?) ?? '',
       mainPath: (row['main_path'] as String?) ?? 'Shadow Arts',
-      sidePath: (row['side_path'] as String?) ?? 'Shadow Arts',
       sect: (row['sect'] as String?) ?? '',
       activePath: (row['active_path'] as String?) ?? '',
       level: (row['level'] as num?)?.toInt() ?? 1,
@@ -112,7 +111,6 @@ class SupabaseService {
       'user_id': userId,
       'name': p.name,
       'main_path': p.mainPath,
-      'side_path': p.sidePath,
       'sect': p.sect,
       'active_path': p.activePath,
       'level': p.level,

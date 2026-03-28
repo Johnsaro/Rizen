@@ -31,11 +31,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: CultivationBackground(
-        child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTopBar(context, cs),
+            SafeArea(
+              bottom: false,
+              child: _buildTopBar(context, cs),
+            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -67,6 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildCheckForUpdates(cs),
                     const SizedBox(height: 16),
                     _buildVersion(cs),
+                    SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
                   ],
                 ),
               ),
@@ -74,8 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildTimeDebugRow(ColorScheme cs) {
@@ -353,15 +355,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: cs.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text(
-                'CREATE ACCOUNT',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.add_circle_outline, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'CREATE ACCOUNT',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -376,15 +385,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
               ),
-              child: const Text(
-                'CLEAR GUEST DATA',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.delete_forever_outlined, color: Colors.red, size: 18),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'CLEAR GUEST DATA',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -402,15 +418,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
         ),
-        child: const Text(
-          'SEVER CONNECTION',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.red,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.5,
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.logout, color: Colors.red, size: 18),
+            const SizedBox(width: 8),
+            const Text(
+              'SEVER CONNECTION',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -642,10 +665,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildComingSoon(ColorScheme cs) {
     final items = [
-      (Icons.notifications_outlined, 'Divine Sense Whispers'),
-      (Icons.lock_outline, 'Dao Privacy'),
-      (Icons.account_circle_outlined, 'Identity Record'),
-      (Icons.folder_outlined, 'Realm Watcher'),
+      (Icons.wifi_tethering, 'Divine Sense Whispers'),
+      (Icons.security, 'Dao Privacy'),
+      (Icons.badge_outlined, 'Identity Record'),
+      (Icons.track_changes, 'Realm Watcher'),
     ];
 
     return Container(

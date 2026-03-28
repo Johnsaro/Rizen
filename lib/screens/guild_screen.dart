@@ -12,6 +12,7 @@ import 'personal_records_screen.dart';
 import '../widgets/check_in_overlay.dart';
 import '../widgets/nag_prompt.dart';
 import '../theme/night_guild_background.dart';
+import '../widgets/glass_card.dart';
 
 class GuildScreen extends StatefulWidget {
   const GuildScreen({super.key});
@@ -238,14 +239,12 @@ class _GuildScreenState extends State<GuildScreen> {
             ),
           ),
           const SizedBox(height: 32),
-          Container(
-            width: double.infinity,
+          GlassCard(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: cs.outline, width: 1),
-            ),
+            borderRadius: 12.0,
+            backgroundColor: cs.surface.withValues(alpha: 0.3),
+            borderColor: cs.primary.withValues(alpha: 0.25),
+            blurRadius: 10.0,
             child: Column(
               children: [
                 Text(
@@ -343,17 +342,12 @@ class _GuildScreenState extends State<GuildScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: double.infinity,
+          GlassCard(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: cs.primary.withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
+            borderRadius: 12.0,
+            backgroundColor: cs.primary.withValues(alpha: 0.05),
+            borderColor: cs.primary.withValues(alpha: 0.3),
+            blurRadius: 10.0,
             child: Row(
               children: [
                 Container(
@@ -411,17 +405,12 @@ class _GuildScreenState extends State<GuildScreen> {
                 builder: (_) => const GuildMasterScreen(),
               ),
             ),
-            child: Container(
-              width: double.infinity,
+            child: GlassCard(
               padding: const EdgeInsets.symmetric(vertical: 13),
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: cs.primary.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
+              borderRadius: 10.0,
+              backgroundColor: cs.primary.withValues(alpha: 0.15),
+              borderColor: cs.primary.withValues(alpha: 0.4),
+              blurRadius: 8.0,
               child: Text(
                 'Transmit Intent →',
                 textAlign: TextAlign.center,
@@ -444,17 +433,12 @@ class _GuildScreenState extends State<GuildScreen> {
                   builder: (_) => const LibraryScreen(),
                 ),
               ),
-              child: Container(
-                width: double.infinity,
+              child: GlassCard(
                 padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: cs.outline.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
+                borderRadius: 10.0,
+                backgroundColor: cs.surface.withValues(alpha: 0.2),
+                borderColor: cs.outline.withValues(alpha: 0.3),
+                blurRadius: 8.0,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -547,20 +531,19 @@ class _GuildScreenState extends State<GuildScreen> {
     final isAccepted = acceptedQuests.any((q) => q.id == quest.id);
     final rankColor = _guildRankColor(quest.rank);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isAccepted
-              ? Colors.green.withValues(alpha: 0.35)
-              : rankColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GlassCard(
+        padding: const EdgeInsets.all(12),
+        borderRadius: 10.0,
+        backgroundColor: isAccepted
+            ? Colors.green.withValues(alpha: 0.05)
+            : cs.surface.withValues(alpha: 0.3),
+        borderColor: isAccepted
+            ? Colors.green.withValues(alpha: 0.4)
+            : rankColor.withValues(alpha: 0.3),
+        blurRadius: 10.0,
+        child: Row(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -622,6 +605,7 @@ class _GuildScreenState extends State<GuildScreen> {
             ),
         ],
       ),
+      ),
     );
   }
 
@@ -631,10 +615,17 @@ class _GuildScreenState extends State<GuildScreen> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
+        child: GlassCard(
+          padding: const EdgeInsets.all(32),
+          borderRadius: 16.0,
+          backgroundColor: cs.surface.withValues(alpha: 0.3),
+          borderColor: cs.outline.withValues(alpha: 0.2),
+          blurRadius: 15.0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
               Icons.lock_person_outlined,
               size: 52,
               color: cs.onSurface.withValues(alpha: 0.1),
@@ -668,6 +659,7 @@ class _GuildScreenState extends State<GuildScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

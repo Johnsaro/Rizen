@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
@@ -28,7 +29,7 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
     super.initState();
     _rotationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 20),
+      duration: const Duration(seconds: 40), // Slower rotation
     )..repeat();
 
     _pulseController = AnimationController(
@@ -77,28 +78,44 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
         alignment: Alignment.bottomCenter,
         children: [
           // ── Layer 1: The Sacred Altar Structure ──
-          CustomPaint(
-            size: Size(size.width, 100),
-            painter: _AltarStructurePainter(
-              color: cs.surface,
-              accent: cs.primary,
-              outline: cs.outline,
+          Positioned(
+            bottom: 0,
+            child: ClipPath(
+              clipper: _AltarClipper(),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  width: size.width,
+                  height: 100,
+                  color: cs.brightness == Brightness.dark
+                      ? cs.surface.withValues(alpha: 0.65)
+                      : cs.surface.withValues(alpha: 0.35), // Translucent in light mode
+                  child: CustomPaint(
+                    painter: _AltarBorderPainter(
+                      accent: cs.primary,
+                      outline: cs.outline,
+                      isDark: cs.brightness == Brightness.dark,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
 
           // ── Layer 2: Nav Items ──
           Positioned(
-            bottom: 20,
+            bottom: 15,
             left: 0,
             right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _buildNavItem(0, Icons.flare, 'Core', cs),
-                _buildNavItem(1, Icons.auto_stories, 'Trials', cs),
+                _buildNavItem(0, Icons.spa_outlined, Icons.spa, 'Core', cs),
+                _buildNavItem(1, Icons.military_tech_outlined, Icons.military_tech, 'Trials', cs),
                 const SizedBox(width: 70), // Center Gap
-                _buildNavItem(3, Icons.castle, 'Sect', cs),
-                _buildNavItem(4, Icons.psychology_alt, 'Spirit', cs),
+                _buildNavItem(3, Icons.account_balance_outlined, Icons.account_balance, 'Sect', cs),
+                _buildNavItem(4, Icons.self_improvement_outlined, Icons.self_improvement, 'Spirit', cs),
               ],
             ),
           ),
@@ -116,7 +133,7 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label, ColorScheme cs) {
+  Widget _buildNavItem(int index, IconData hollowIcon, IconData solidIcon, String label, ColorScheme cs) {
     final animation = _selectionControllers[index];
     
     return GestureDetector(
@@ -125,66 +142,73 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
       child: AnimatedBuilder(
         animation: Listenable.merge([animation, _pulseController]),
         builder: (context, _) {
-          final isSelected = widget.currentIndex == index;
           final value = animation.value;
-          final pulse = _pulseController.value;
-
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Transform.translate(
-                offset: Offset(0, -5 * value),
-                child: Stack(
+          
+          return Container(
+            width: 50,
+            color: Colors.transparent, // expand hit area
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Glow Aura — Using direct color alpha instead of Opacity widget (Impeller safe)
-                    if (value > 0.01)
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: cs.primary.withValues(alpha: value * (0.15 + (pulse * 0.1))),
-                              blurRadius: 10 * value,
-                              spreadRadius: 1 * value,
-                            ),
-                          ],
-                        ),
+                    // Hollow Icon (Fades out)
+                    Opacity(
+                      opacity: 1.0 - value,
+                      child: Icon(
+                        hollowIcon,
+                        size: 24,
+                        color: cs.onSurface.withValues(alpha: 0.45),
                       ),
-                    
-                    // Floating Particles for Active Tab
-                    if (isSelected)
-                      ...List.generate(2, (i) => _QiDrift(color: cs.primary, seed: i + index * 10)),
-
-                    Icon(
-                      icon,
-                      size: 22 + (4 * value),
-                      color: Color.lerp(
-                        cs.onSurface.withValues(alpha: 0.35),
-                        cs.primary,
-                        value,
+                    ),
+                    // Solid Icon (Fades in & scales slightly)
+                    Opacity(
+                      opacity: value,
+                      child: Transform.scale(
+                        scale: 1.0 + (0.15 * value),
+                        child: Icon(
+                          solidIcon,
+                          size: 24,
+                          color: cs.primary,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label.toUpperCase(),
-                style: GoogleFonts.cinzel(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  color: Color.lerp(
-                    cs.onSurface.withValues(alpha: 0.35),
-                    cs.primary,
-                    value,
+                const SizedBox(height: 6),
+                Text(
+                  label.toUpperCase(),
+                  style: GoogleFonts.cinzel(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    color: Color.lerp(
+                      cs.onSurface.withValues(alpha: 0.35),
+                      cs.primary,
+                      value,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                // Glowing Animated Line Trace
+                Container(
+                  width: 24 * value, // Expands from 0
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: value),
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cs.primary.withValues(alpha: value * 0.6),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      )
+                    ],
+                  ),
+                )
+              ],
+            ),
           );
         },
       ),
@@ -203,8 +227,8 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
         RotationTransition(
           turns: _rotationController,
           child: CustomPaint(
-            size: const Size(100, 100),
-            painter: _RuneCirclePainter(color: sealColor.withValues(alpha: 0.15)),
+            size: const Size(110, 110),
+            painter: _RuneCirclePainter(color: sealColor.withValues(alpha: 0.2)),
           ),
         ),
 
@@ -212,42 +236,53 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
         RotationTransition(
           turns: Tween(begin: 1.0, end: 0.0).animate(_rotationController),
           child: CustomPaint(
-            size: const Size(75, 75),
-            painter: _SpiritualFormationPainter(color: sealColor.withValues(alpha: 0.25)),
+            size: const Size(85, 85),
+            painter: _SpiritualFormationPainter(color: sealColor.withValues(alpha: 0.3)),
           ),
         ),
 
         // 3. The Core Seal Artifact
         Container(
-          width: 64,
-          height: 64,
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: cs.surface,
+            color: cs.surface.withValues(alpha: 0.85),
             border: Border.all(
               color: sealColor.withValues(alpha: isActive ? 1.0 : 0.4),
               width: 1.5,
             ),
             boxShadow: [
+              BoxShadow(
+                color: cs.surface.withValues(alpha: 0.5), // inner heavy drop shadow
+                blurRadius: 10,
+                spreadRadius: -4,
+              ),
               // Layered Glow
               BoxShadow(
-                color: sealColor.withValues(alpha: 0.12 + (pulse * 0.1)),
-                blurRadius: 8 + (pulse * 6),
-                spreadRadius: 1 + (pulse * 2),
+                color: sealColor.withValues(alpha: 0.15 + (pulse * 0.15)),
+                blurRadius: 12 + (pulse * 8),
+                spreadRadius: 1 + (pulse * 3),
               ),
               if (isActive)
                 BoxShadow(
-                  color: sealColor.withValues(alpha: 0.06),
-                  blurRadius: 20,
-                  spreadRadius: 5,
+                  color: sealColor.withValues(alpha: 0.1),
+                  blurRadius: 25,
+                  spreadRadius: 8,
                 ),
             ],
           ),
-          child: Center(
-            child: Icon(
-              widget.checkedIn ? Icons.fort : Icons.bolt,
-              color: sealColor,
-              size: 30,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(34),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: Center(
+                child: Icon(
+                  widget.checkedIn ? Icons.shield : Icons.bolt,
+                  color: sealColor,
+                  size: 32,
+                ),
+              ),
             ),
           ),
         ),
@@ -260,35 +295,10 @@ class _MysticSectNavState extends State<MysticSectNav> with TickerProviderStateM
   }
 }
 
-class _AltarStructurePainter extends CustomPainter {
-  final Color color;
-  final Color accent;
-  final Color outline;
-  _AltarStructurePainter({required this.color, required this.accent, required this.outline});
-
+class _AltarClipper extends CustomClipper<Path> {
   @override
-  void paint(Canvas canvas, Size size) {
-    final isDark = color.computeLuminance() < 0.5;
-    
-    // Premium Sacred Material: Polished Jade (Light) or Ink Stone (Dark)
-    final paint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: isDark 
-          ? [color.withValues(alpha: 0.95), color.withValues(alpha: 0.85)]
-          : [const Color(0xFFFAF8F2), const Color(0xFFF2EEE0)],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..style = PaintingStyle.fill;
-
-    final linePaint = Paint()
-      ..color = accent.withValues(alpha: isDark ? 0.3 : 0.4)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-    
+  Path getClip(Size size) {
     final path = Path();
-
-    // Sacred Altar Geometry (Stepped Design)
     path.moveTo(0, size.height);
     path.lineTo(0, 30);
     path.quadraticBezierTo(size.width * 0.1, 15, size.width * 0.25, 20);
@@ -299,11 +309,26 @@ class _AltarStructurePainter extends CustomPainter {
     path.quadraticBezierTo(size.width * 0.9, 15, size.width, 30);
     path.lineTo(size.width, size.height);
     path.close();
+    return path;
+  }
 
-    // Draw main body with soft shadow
-    canvas.drawShadow(path, isDark ? Colors.black : const Color(0x20000000), 15, true);
-    canvas.drawPath(path, paint);
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
 
+class _AltarBorderPainter extends CustomPainter {
+  final Color accent;
+  final Color outline;
+  final bool isDark;
+  _AltarBorderPainter({required this.accent, required this.outline, required this.isDark});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final linePaint = Paint()
+      ..color = accent.withValues(alpha: isDark ? 0.4 : 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+      
     // Golden/Jade Spiritual Lines (Filigree)
     final filigreePath = Path();
     filigreePath.moveTo(0, 32);
@@ -317,11 +342,20 @@ class _AltarStructurePainter extends CustomPainter {
     rightFiligree.lineTo(size.width * 0.65, 22);
     canvas.drawPath(rightFiligree, linePaint);
 
-    // Top subtle highlight line
+    // Top border line
+    final topBorderPath = _AltarClipper().getClip(size);
     canvas.drawPath(
-      path, 
+      topBorderPath, 
       Paint()
-        ..color = isDark ? accent.withValues(alpha: 0.15) : const Color(0xFFFFFFFF)
+        ..color = isDark ? outline.withValues(alpha: 0.5) : const Color(0xFFE5E1D8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+    );
+    // Top highlight rim
+    canvas.drawPath(
+      topBorderPath, 
+      Paint()
+        ..color = isDark ? accent.withValues(alpha: 0.1) : Colors.white
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.5
     );
@@ -337,11 +371,9 @@ class _RuneCirclePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 0.8;
+    final paint = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 1.2;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
-    
-    canvas.drawCircle(center, radius, paint);
     
     // Abstract Rune Symbols
     for (int i = 0; i < 12; i++) {
@@ -352,12 +384,11 @@ class _RuneCirclePainter extends CustomPainter {
       canvas.translate(pos.dx, pos.dy);
       canvas.rotate(angle + math.pi/2);
       
-      // Paint a "Rune" (simple geometric combo)
       final rPath = Path();
-      rPath.moveTo(-3, 0);
-      rPath.lineTo(3, 0);
-      rPath.moveTo(0, -2);
-      rPath.lineTo(0, 2);
+      rPath.moveTo(-4, 0);
+      rPath.lineTo(4, 0);
+      rPath.moveTo(0, -3);
+      rPath.lineTo(0, 3);
       canvas.drawPath(rPath, paint);
       
       canvas.restore();
@@ -374,7 +405,7 @@ class _SpiritualFormationPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 1.2;
+    final paint = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 1.0;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
 
@@ -388,13 +419,15 @@ class _SpiritualFormationPainter extends CustomPainter {
       } else {
         path.lineTo(point.dx, point.dy);
       }
-      
       // Connecting lines to center
-      canvas.drawLine(center, point, paint..color = color.withValues(alpha: 0.1));
+      canvas.drawLine(center, point, paint..color = color.withValues(alpha: 0.2));
     }
     path.close();
     canvas.drawPath(path, paint);
-    canvas.drawCircle(center, radius * 0.4, paint);
+    
+    // Inner geometric circle
+    final innerPaint = Paint()..color = color.withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 0.5;
+    canvas.drawCircle(center, radius * 0.45, innerPaint);
   }
 
   @override
@@ -438,22 +471,21 @@ class _QiDriftState extends State<_QiDrift> with SingleTickerProviderStateMixin 
       animation: _controller,
       builder: (context, _) {
         final v = _controller.value;
-        final opacity = (1.0 - v).clamp(0.0, 1.0) * 0.5;
+        final opacity = (1.0 - v).clamp(0.0, 1.0) * 0.6;
         
         return Positioned(
-          top: (widget.isCore ? 30 : 0) - (v * 40),
-          left: (widget.isCore ? 50 : 20) + _xStart + (math.sin(v * 5) * 5),
+          top: (widget.isCore ? 30 : 0) - (v * 45),
+          left: (widget.isCore ? 50 : 20) + _xStart + (math.sin(v * 6) * 6),
           child: Container(
-            width: 2 + (widget.isCore ? 2 : 0),
-            height: 2 + (widget.isCore ? 2 : 0),
+            width: 3 + (widget.isCore ? 2.0 : 0.0),
+            height: 3 + (widget.isCore ? 2.0 : 0.0),
             decoration: BoxDecoration(
-              // Using color alpha instead of Opacity widget
               color: widget.color.withValues(alpha: opacity),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
                   color: widget.color.withValues(alpha: opacity),
-                  blurRadius: 4,
+                  blurRadius: 6,
                 ),
               ],
             ),

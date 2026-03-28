@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class QuestionCard extends StatelessWidget {
@@ -27,14 +28,17 @@ class QuestionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        border: Border(top: BorderSide(color: cs.outline, width: 1)),
-      ),
-      child: Column(
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          decoration: BoxDecoration(
+            color: cs.surface.withValues(alpha: 0.5),
+            border: Border(top: BorderSide(color: cs.outline.withValues(alpha: 0.5), width: 1)),
+          ),
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -50,6 +54,8 @@ class QuestionCard extends StatelessWidget {
           const SizedBox(height: 12),
           ...List.generate(options.length, (i) => _buildOption(i, cs)),
         ],
+      ),
+      ),
       ),
     );
   }

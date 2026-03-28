@@ -89,7 +89,6 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final bg = Theme.of(context).scaffoldBackgroundColor;
 
     return Scaffold(

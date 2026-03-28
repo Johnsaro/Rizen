@@ -60,7 +60,6 @@ class PlayerData {
   final String name;
   final int level;
   final String mainPath;
-  final String sidePath;
   final String sect;
   final String activePath;
   final double qi;
@@ -93,7 +92,6 @@ class PlayerData {
   const PlayerData({
     required this.name,
     required this.mainPath,
-    required this.sidePath,
     this.sect = '',
     this.activePath = '',
     this.level = 1,
@@ -169,7 +167,6 @@ class PlayerData {
   static const empty = PlayerData(
     name: '',
     mainPath: 'Shadow Arts',
-    sidePath: 'Shadow Arts',
     sect: '',
     activePath: '',
     daoHeartStreak: 0,
@@ -261,7 +258,7 @@ class PlayerData {
   }
 
   /// Adds [amount] Qi to the overall level and to the path track(s).
-  /// If [pathTag] == 'Any', both mainPath and sidePath receive Qi.
+  /// If [pathTag] == 'Any', mainPath receives Qi.
   PlayerData addQi(int amount, {String pathTag = 'Any'}) {
     double xp = qi + amount;
     int lv = level;
@@ -286,13 +283,12 @@ class PlayerData {
 
     if (pathTag == 'Any') {
       applyPathQi(mainPath);
-      applyPathQi(sidePath);
     } else {
       applyPathQi(pathTag);
     }
 
     return PlayerData(
-      name: name, mainPath: mainPath, sidePath: sidePath, sect: sect,
+      name: name, mainPath: mainPath, sect: sect,
       activePath: activePath, level: lv, qi: xp, spiritStones: spiritStones,
       pathQi: newPathQi, pathLevel: newPathLevel, inventory: inventory,
       daoHeartStreak: daoHeartStreak, talismans: talismans, title: title,
@@ -324,7 +320,6 @@ class PlayerData {
   PlayerData copyWith({
     String? name,
     String? mainPath,
-    String? sidePath,
     String? sect,
     String? activePath,
     int? level,
@@ -358,7 +353,6 @@ class PlayerData {
     return PlayerData(
       name: name ?? this.name,
       mainPath: mainPath ?? this.mainPath,
-      sidePath: sidePath ?? this.sidePath,
       sect: sect ?? this.sect,
       activePath: activePath ?? this.activePath,
       level: level ?? this.level,

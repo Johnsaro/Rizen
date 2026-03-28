@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
@@ -5,7 +6,6 @@ import '../main_shell.dart';
 import '../models/player_data.dart';
 import '../services/guest_session.dart';
 import '../services/local_storage_service.dart';
-import '../theme/night_guild_background.dart';
 import 'onboarding_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -24,10 +24,22 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _emailFocus.addListener(() => setState(() {}));
+    _passwordFocus.addListener(() => setState(() {}));
+  }
+
   @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -111,7 +123,6 @@ class _AuthScreenState extends State<AuthScreen> {
       final wanderer = PlayerData(
         name: 'Wanderer',
         mainPath: 'Shadow Arts',
-        sidePath: 'Shadow Arts',
         sect: 'Unaffiliated',
         level: 1,
         qi: 0,
@@ -144,93 +155,133 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: CultivationBackground(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 56),
-              _buildHeader(cs),
-              const SizedBox(height: 48),
-              _buildFields(cs),
-              const SizedBox(height: 16),
-              if (_errorMsg != null) _buildError(cs),
-              const SizedBox(height: 24),
-              _buildSubmitButton(cs),
-              const SizedBox(height: 20),
-              _buildToggle(cs),
-              if (!widget.migrateFromGuest) ...[
-                const SizedBox(height: 28),
-                _buildWandererButton(cs),
-              ],
-            ],
+      body: Stack(
+        children: [
+          // Background Gradient Dark Ink to Deep Jade
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF0B0F14), // Dark Ink
+                  Color(0xFF0F3D3E), // Deep Jade Green
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0.1, 1.0],
+              ),
+            ),
           ),
-        ),
-      ),
-    ),
-  );
-  }
+          
+          // Subtle Particle Effects
+          const Positioned.fill(child: _CultivationParticles()),
 
-  Widget _buildHeader(ColorScheme cs) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: cs.primary.withValues(alpha: 0.12),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.4)),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 64),
+                  _buildHeader(),
+                  const SizedBox(height: 48),
+                  _buildFields(),
+                  const SizedBox(height: 16),
+                  if (_errorMsg != null) _buildError(),
+                  const SizedBox(height: 32),
+                  _buildSubmitButton(),
+                  const SizedBox(height: 24),
+                  _buildToggle(),
+                  if (!widget.migrateFromGuest) ...[
+                    const SizedBox(height: 32),
+                    _buildWandererButton(),
+                  ],
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
           ),
-          child: Icon(Icons.account_balance, color: cs.secondary, size: 22),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Sect Registry',
-          style: TextStyle(
-            color: cs.onSurface,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          _isSignIn
-              ? 'Sign in to continue your journey.'
-              : 'Register to begin your journey.',
-          style: TextStyle(
-            color: cs.onSurface.withValues(alpha: 0.5),
-            fontSize: 13,
-            height: 1.5,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildFields(ColorScheme cs) {
+  Widget _buildHeader() {
+    return Center(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Talisman/Pagoda Icon with Aura
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF0F3D3E).withValues(alpha: 0.4),
+              border: Border.all(color: const Color(0xFF00D1B2).withValues(alpha: 0.5), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF00D1B2).withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: const Icon(Icons.gite_rounded, color: Color(0xFFD4AF37), size: 32),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Sect Registry',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _isSignIn
+                ? 'Enter the path of cultivation'
+                : 'Begin your journey into the Dao',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 14,
+              height: 1.5,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Spiritual Seal Divider
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Expanded(child: Divider(color: const Color(0xFFD4AF37).withValues(alpha: 0.2), endIndent: 12)),
+              Icon(Icons.brightness_5_outlined, color: const Color(0xFFD4AF37).withValues(alpha: 0.6), size: 16),
+              Expanded(child: Divider(color: const Color(0xFFD4AF37).withValues(alpha: 0.2), indent: 12)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFields() {
     return Column(
       children: [
         _buildField(
-          cs,
           controller: _emailCtrl,
-          label: 'Email',
+          focusNode: _emailFocus,
+          label: 'Mortal Designation (Email)',
           hint: 'you@example.com',
           keyboardType: TextInputType.emailAddress,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         _buildField(
-          cs,
           controller: _passwordCtrl,
-          label: 'Password',
+          focusNode: _passwordFocus,
+          label: 'Secret Art (Password)',
           hint: '••••••••',
           obscure: true,
         ),
@@ -238,52 +289,70 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildField(
-    ColorScheme cs, {
+  Widget _buildField({
     required TextEditingController controller,
+    required FocusNode focusNode,
     required String label,
     required String hint,
     bool obscure = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final bool isFocused = focusNode.hasFocus;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label.toUpperCase(),
           style: TextStyle(
-            color: cs.onSurface.withValues(alpha: 0.4),
+            color: const Color(0xFFD4AF37).withValues(alpha: 0.8),
             fontSize: 10,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.5,
           ),
         ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          obscureText: obscure,
-          keyboardType: keyboardType,
-          style: TextStyle(color: cs.onSurface, fontSize: 14),
-          onSubmitted: (_) => _submit(),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle:
-                TextStyle(color: cs.onSurface.withValues(alpha: 0.25)),
-            filled: true,
-            fillColor: cs.surface,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: cs.outline),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: cs.outline),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: cs.primary, width: 1.5),
+        const SizedBox(height: 8),
+        // Animated glow container
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: isFocused
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF00D1B2).withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                    )
+                  ]
+                : [],
+          ),
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            obscureText: obscure,
+            keyboardType: keyboardType,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            onSubmitted: (_) => _submit(),
+            cursorColor: const Color(0xFF00D1B2),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(color: Color(0xFF8A94A6)),
+              filled: true,
+              fillColor: const Color(0xFF151A22),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: const Color(0xFF8A94A6).withValues(alpha: 0.1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: const Color(0xFF8A94A6).withValues(alpha: 0.1)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFF00D1B2), width: 1.5),
+              ),
             ),
           ),
         ),
@@ -291,109 +360,126 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildError(ColorScheme cs) {
+  Widget _buildError() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        color: Colors.redAccent.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
       ),
       child: Text(
         _errorMsg!,
-        style: const TextStyle(color: Colors.red, fontSize: 13, height: 1.4),
+        style: const TextStyle(color: Colors.redAccent, fontSize: 13, height: 1.4),
       ),
     );
   }
 
-  Widget _buildSubmitButton(ColorScheme cs) {
+  Widget _buildSubmitButton() {
     return GestureDetector(
       onTap: _isLoading ? null : _submit,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
-          color: _isLoading
-              ? cs.primary.withValues(alpha: 0.5)
-              : cs.primary,
-          borderRadius: BorderRadius.circular(12),
+          gradient: _isLoading
+              ? null
+              : const LinearGradient(
+                  colors: [Color(0xFF005A5B), Color(0xFF00D1B2)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+          color: _isLoading ? const Color(0xFF0F3D3E) : null,
+          borderRadius: BorderRadius.circular(14),
           boxShadow: _isLoading
               ? null
               : [
                   BoxShadow(
-                    color: cs.primary.withValues(alpha: 0.35),
-                    blurRadius: 16,
+                    color: const Color(0xFF00D1B2).withValues(alpha: 0.4),
+                    blurRadius: 12,
                     spreadRadius: 2,
+                    offset: const Offset(0, 4),
                   ),
                 ],
         ),
         child: _isLoading
-            ? Center(
+            ? const Center(
                 child: SizedBox(
-                  width: 18,
-                  height: 18,
+                  width: 20,
+                  height: 20,
                   child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white.withValues(alpha: 0.8),
+                    strokeWidth: 2.5,
+                    color: Colors.white70,
                   ),
                 ),
               )
             : Text(
-                _isSignIn ? 'SIGN IN' : 'CREATE ACCOUNT',
+                _isSignIn ? 'OPEN IMMORTAL PORTAL' : 'FORGE DESTINY',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
+                  letterSpacing: 2.0,
                 ),
               ),
       ),
     );
   }
 
-  Widget _buildToggle(ColorScheme cs) {
+  Widget _buildToggle() {
     return Center(
       child: GestureDetector(
         onTap: () => setState(() {
           _isSignIn = !_isSignIn;
           _errorMsg = null;
         }),
-        child: Text(
-          _isSignIn
-              ? 'No account? Sign up'
-              : 'Have an account? Sign in',
-          style: TextStyle(
-            color: cs.secondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
+        child: RichText(
+          text: TextSpan(
+            text: _isSignIn ? 'No sect affiliate? ' : 'Already have a legacy? ',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 13,
+            ),
+            children: [
+              TextSpan(
+                text: _isSignIn ? 'Sign up' : 'Sign in',
+                style: const TextStyle(
+                  color: Color(0xFFD4AF37),
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildWandererButton(ColorScheme cs) {
+  Widget _buildWandererButton() {
     return Center(
       child: GestureDetector(
         onTap: _isLoading ? null : _enterAsGuest,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: cs.onSurface.withValues(alpha: 0.2),
+              color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+              width: 1.5,
             ),
           ),
           child: Text(
             'CONTINUE AS WANDERER',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: cs.onSurface.withValues(alpha: 0.5),
-              fontSize: 12,
+              color: const Color(0xFFD4AF37).withValues(alpha: 0.9),
+              fontSize: 13,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.5,
             ),
@@ -402,4 +488,104 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
     );
   }
+}
+
+// Minimal floating particles to simulate "Qi"
+class _CultivationParticles extends StatefulWidget {
+  const _CultivationParticles();
+
+  @override
+  State<_CultivationParticles> createState() => _CultivationParticlesState();
+}
+
+class _CultivationParticlesState extends State<_CultivationParticles> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  final math.Random _random = math.Random();
+  late final List<_Particle> _particles;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
+    
+    // Generate some random particles
+    _particles = List.generate(15, (_) => _Particle(
+      xOffset: _random.nextDouble(),
+      yOffset: _random.nextDouble(),
+      size: _random.nextDouble() * 4 + 2,
+      speed: _random.nextDouble() * 0.5 + 0.1,
+      sinOffset: _random.nextDouble() * math.pi * 2,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _ParticlePainter(_particles, _controller.value),
+        );
+      },
+    );
+  }
+}
+
+class _Particle {
+  final double xOffset;
+  final double yOffset;
+  final double size;
+  final double speed;
+  final double sinOffset;
+
+  _Particle({
+    required this.xOffset,
+    required this.yOffset,
+    required this.size,
+    required this.speed,
+    required this.sinOffset,
+  });
+}
+
+class _ParticlePainter extends CustomPainter {
+  final List<_Particle> particles;
+  final double progress;
+
+  _ParticlePainter(this.particles, this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF00D1B2).withValues(alpha: 0.15)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3); // Glow effect
+
+    for (final p in particles) {
+      // Move upwards and sway
+      final dy = (p.yOffset - progress * p.speed) % 1.0;
+      final actualY = dy < 0 ? dy + 1.0 : dy;
+      
+      final dx = p.xOffset + math.sin(progress * math.pi * 4 + p.sinOffset) * 0.05;
+      
+      final actualX = dx % 1.0;
+
+      canvas.drawCircle(
+        Offset(actualX * size.width, actualY * size.height),
+        p.size,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ParticlePainter oldDelegate) => true;
 }
